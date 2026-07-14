@@ -282,7 +282,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                     checked={allowCrossView}
                     onChange={(e) => setAllowCrossView(e.target.checked)}
                   />
-                  <label htmlFor="allowCrossView" className="text-xs text-slate-600 select-none">Allow Cross View</label>
+                  <label htmlFor="allowCrossView" className="text-xs text-slate-650 font-semibold select-none">Allow Cross View</label>
                 </div>
               </div>
 

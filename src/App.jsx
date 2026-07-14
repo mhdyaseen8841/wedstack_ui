@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Heart, Clock, DollarSign, Eye, EyeOff, BarChart2, Share2, ClipboardList, Shield, LogOut, User as UserIcon, Lightbulb, Trash2, Plus, CheckCircle, Check, Landmark, Music } from 'lucide-react';
 import FastCaptureInbox from './components/FastCaptureInbox';
 import VendorMatrix from './components/VendorMatrix';
@@ -25,6 +26,12 @@ export default function App() {
   
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState('inbox');
+  
+  // Registration and Code join parameters
+  const [regMode, setRegMode] = useState('create'); // 'create' or 'join'
+  const [regWeddingCode, setRegWeddingCode] = useState('');
+  const [regWeddingDate, setRegWeddingDate] = useState('');
+  const [regTotalBudget, setRegTotalBudget] = useState('45000');
   
   // Auth Form State
   const [isRegister, setIsRegister] = useState(false);
@@ -291,7 +298,15 @@ export default function App() {
     setAuthError(null);
     const endpoint = isRegister ? 'register' : 'login';
     const payload = isRegister 
-      ? { name: authName, email: authEmail, password: authPassword, role: authRole }
+      ? { 
+          name: authName, 
+          email: authEmail, 
+          password: authPassword, 
+          role: authRole,
+          weddingCode: regMode === 'join' ? regWeddingCode : undefined,
+          totalBudget: regMode === 'create' ? Number(regTotalBudget) : undefined,
+          weddingDate: regMode === 'create' ? regWeddingDate : undefined
+        }
       : { email: authEmail, password: authPassword };
 
     try {
@@ -438,6 +453,65 @@ export default function App() {
               </div>
             )}
 
+            {isRegister && (
+              <div className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/20 space-y-3">
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-lg text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setRegMode('create')}
+                    className={`flex-1 py-1.5 rounded-md transition-all ${
+                      regMode === 'create' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                    }`}
+                  >
+                    Start a New Event
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegMode('join')}
+                    className={`flex-1 py-1.5 rounded-md transition-all ${
+                      regMode === 'join' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                    }`}
+                  >
+                    Join Existing Event
+                  </button>
+                </div>
+
+                {regMode === 'create' ? (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-550 uppercase tracking-wider">Wedding Event Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                        value={regWeddingDate}
+                        onChange={(e) => setRegWeddingDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-555 uppercase tracking-wider">Initial Budget Target ($)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                        value={regTotalBudget}
+                        onChange={(e) => setRegTotalBudget(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-550 uppercase tracking-wider">Wedding Invite Code</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold placeholder:font-sans"
+                      placeholder="e.g. WED-8491"
+                      value={regWeddingCode}
+                      onChange={(e) => setRegWeddingCode(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-md shadow-indigo-600/10"
@@ -474,9 +548,6 @@ export default function App() {
   }
 
   // Set workspace theme accents
-  // Bride side: Soft rose (rose-600/rose-700)
-  // Groom side: Steel blue (sky-600/sky-700)
-  // Mutual/Shared views: Deep Indigo (indigo-600/indigo-700)
   const accentColorClass = activeSide === 'Bride' 
     ? 'text-rose-600 focus:ring-rose-500 border-rose-600 bg-rose-600' 
     : activeSide === 'Groom' 
@@ -494,15 +565,22 @@ export default function App() {
       {/* Global Header */}
       <header className="bg-white border-b border-slate-200 shrink-0 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${accentColorClass}`}>
-              <Heart className="w-4 h-4 fill-current" />
+          {/* Brand Logo & Invite Code */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${accentColorClass}`}>
+                <Heart className="w-4 h-4 fill-current" />
+              </div>
+              <div>
+                <span className="font-extrabold text-slate-800 text-base tracking-tight">WedStack</span>
+                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold ml-1.5 uppercase">Workspace</span>
+              </div>
             </div>
-            <div>
-              <span className="font-extrabold text-slate-800 text-base tracking-tight">WedStack</span>
-              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold ml-1.5 uppercase">Workspace</span>
-            </div>
+            {wedding?.weddingCode && (
+              <div className="hidden lg:flex items-center bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full text-xs font-semibold text-indigo-700 select-all" title="Share this code with your partner to join this wedding!">
+                🔑 Invite Code: <span className="underline ml-1 font-mono font-bold">{wedding.weddingCode}</span>
+              </div>
+            )}
           </div>
 
           {/* Tri-Color Workspace Switcher */}

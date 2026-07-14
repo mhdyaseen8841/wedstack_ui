@@ -440,12 +440,12 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                   {filteredVendors.map(vendor => (
                     <div
                       key={vendor._id}
-                      className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-sm text-xs hover:shadow-md transition-shadow cursor-pointer relative group"
+                      className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer relative group space-y-2"
                     >
-                      <div className="font-semibold text-slate-800 truncate mb-1">{vendor.vendorName}</div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-500">
-                        <span>{vendor.category}</span>
-                        <span className={`px-1.5 py-0.5 rounded font-medium ${
+                      <div className="font-bold text-slate-800 text-sm truncate">{vendor.vendorName}</div>
+                      <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span className="font-semibold text-slate-600">{vendor.category}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           vendor.sideVisibility === 'Bride' ? 'bg-rose-50 text-rose-600' :
                           vendor.sideVisibility === 'Groom' ? 'bg-sky-50 text-sky-600' :
                           'bg-indigo-50 text-indigo-600'
@@ -455,13 +455,13 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                       </div>
                       
                       {/* Simple status mover arrows */}
-                      <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[9px] text-slate-400 font-medium">Move Status:</span>
+                      <div className="pt-2 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-slate-400 font-bold">Move:</span>
                         <div className="flex gap-1">
                           {boardStatuses.indexOf(statusCol) > 0 && (
                             <button
                               onClick={() => onUpdateVendorStatus(vendor._id, boardStatuses[boardStatuses.indexOf(statusCol) - 1])}
-                              className="bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded text-slate-600"
+                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-655 font-bold"
                             >
                               ←
                             </button>
@@ -469,7 +469,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                           {boardStatuses.indexOf(statusCol) < boardStatuses.length - 1 && (
                             <button
                               onClick={() => onUpdateVendorStatus(vendor._id, boardStatuses[boardStatuses.indexOf(statusCol) + 1])}
-                              className="bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded text-slate-600"
+                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-655 font-bold"
                             >
                               →
                             </button>

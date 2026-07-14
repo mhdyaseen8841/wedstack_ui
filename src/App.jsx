@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Heart, Clock, DollarSign, Share2, ClipboardList, Shield, LogOut, User as UserIcon, Lightbulb, Trash2, Plus, Landmark, Music, Copy, Check, Menu, X } from 'lucide-react';
+import { Sparkles, Heart, Clock, DollarSign, Share2, ClipboardList, Shield, LogOut, User as UserIcon, Lightbulb, Trash2, Plus, Landmark, Music, Copy, Check, Lock } from 'lucide-react';
 import FastCaptureInbox from './components/FastCaptureInbox';
 import VendorMatrix from './components/VendorMatrix';
 import CollaborativeBudget from './components/CollaborativeBudget';
@@ -7,6 +7,28 @@ import DayOfTimeline from './components/DayOfTimeline';
 import CoordinatorTerminal from './components/CoordinatorTerminal';
 import ExpenseManager from './components/ExpenseManager';
 import ProgramPlanner from './components/ProgramPlanner';
+import WeddingHub from './components/WeddingHub';
+
+function LogoIcon({ className = "w-6 h-6" }) {
+  return (
+    <svg 
+      className={className} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2.3" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      {/* Left Ring */}
+      <circle cx="9" cy="13" r="5.5" />
+      {/* Right Ring */}
+      <circle cx="15" cy="13" r="5.5" />
+      {/* Diamond Sparkle Glint */}
+      <path d="M15.5 3.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('wedstack_token') || null);
@@ -18,9 +40,6 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [programDetails, setProgramDetails] = useState([]);
   
-  // Mobile responsive sidebar state
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   // Sidebar Toggles
   const [showNotesSidebar, setShowNotesSidebar] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
@@ -30,7 +49,7 @@ export default function App() {
   const [activeSide, setActiveSide] = useState('Shared');
   
   // Dashboard Tabs
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState('hub');
   
   // Auth Form State
   const [isRegister, setIsRegister] = useState(false);
@@ -185,6 +204,12 @@ export default function App() {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (activeSide === 'Shared' && user?.role !== 'Planner' && (wedding?.brideAllowsMutual === false || wedding?.groomAllowsMutual === false)) {
+      setActiveSide(user?.role === 'Groom' ? 'Groom' : 'Bride');
+    }
+  }, [wedding?.brideAllowsMutual, wedding?.groomAllowsMutual, activeSide, user]);
+
   const handleUpdateVendorStatus = async (vendorId, newStatus) => {
     const original = [...vendors];
     setVendors(vendors.map(v => v._id === vendorId ? { ...v, status: newStatus } : v));
@@ -337,7 +362,7 @@ export default function App() {
         <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-xl space-y-6">
           <div className="text-center space-y-1">
             <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-white shadow-md">
-              <Heart className="w-6 h-6 fill-current animate-pulse" />
+              <LogoIcon className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 pt-3">WedStack Platform</h1>
             <p className="text-xs text-slate-500 font-medium">Collaborative planner & Day-of execution dashboard</p>
@@ -435,7 +460,7 @@ export default function App() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Budget Target ($)</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Budget Target (₹)</label>
                         <input
                           type="number"
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
@@ -484,7 +509,7 @@ export default function App() {
           <div className="text-center">
             <button
               onClick={() => setIsRegister(!isRegister)}
-              className="text-xs text-indigo-650 hover:underline font-semibold"
+              className="text-xs text-indigo-655 hover:underline font-semibold"
             >
               {isRegister ? 'Already registered? Sign in' : 'Create new shared wedding? Sign up'}
             </button>
@@ -505,340 +530,279 @@ export default function App() {
   const borderAccent = activeSide === 'Bride' ? 'border-rose-300' : activeSide === 'Groom' ? 'border-sky-300' : 'border-indigo-600';
 
   return (
-    <div className="min-h-screen md:h-screen w-screen md:overflow-hidden flex flex-col md:flex-row bg-slate-50 text-slate-800 tracking-tight antialiased">
+    <div className="min-h-screen w-screen bg-slate-50 text-slate-800 tracking-tight antialiased flex flex-col">
       
-      {/* Mobile Drawer Menu (Sidebar overlay) */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div 
-            className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs transition-opacity" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          ></div>
-          <div className="relative w-64 bg-slate-900 text-slate-300 flex flex-col justify-between h-full border-r border-slate-850 shadow-2xl z-20">
-            <div className="flex flex-col">
-              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/20">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-                    <Heart className="w-4 h-4 fill-current" />
-                  </div>
-                  <span className="font-extrabold text-white text-base tracking-tight">WedStack</span>
-                </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 p-1.5 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Workspace Switcher */}
-              <div className="p-4 border-b border-slate-800 space-y-1">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">Workspace</span>
-                <button
-                  onClick={() => { setActiveSide('Bride'); setIsMobileMenuOpen(false); }}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                    activeSide === 'Bride' ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400' : 'hover:bg-slate-800 hover:text-white border border-transparent'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> Bride Workspace
-                </button>
-                <button
-                  onClick={() => { setActiveSide('Shared'); setIsMobileMenuOpen(false); }}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                    activeSide === 'Shared' ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400' : 'hover:bg-slate-800 hover:text-white border border-transparent'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span> Mutual Shared View
-                </button>
-                <button
-                  onClick={() => { setActiveSide('Groom'); setIsMobileMenuOpen(false); }}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                    activeSide === 'Groom' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'hover:bg-slate-800 hover:text-white border border-transparent'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span> Groom Workspace
-                </button>
-              </div>
-
-              {/* Modules List */}
-              <nav className="p-4 space-y-1">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-2">Modules</span>
-                {[
-                  { id: 'inbox', label: 'AI Quote Inbox', icon: Sparkles },
-                  { id: 'comparison', label: 'VS Matrix Grid', icon: ClipboardList },
-                  { id: 'budget', label: 'Collaborative Budget', icon: DollarSign },
-                  { id: 'expenses', label: 'Expenses Log', icon: Landmark },
-                  { id: 'program', label: 'Program details', icon: Music },
-                  { id: 'timeline', label: 'Day-of Timeline', icon: Clock },
-                  { id: 'terminal', label: 'Coordinator Portal', icon: Share2 }
-                ].map(tab => {
-                  const TabIcon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  let activeTabClass = 'bg-indigo-600 text-white shadow-sm';
-                  if (isActive) {
-                    if (activeSide === 'Bride') activeTabClass = 'bg-rose-600 text-white';
-                    else if (activeSide === 'Groom') activeTabClass = 'bg-sky-600 text-white';
-                  }
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => { setActiveTab(tab.id); setIsMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all ${
-                        isActive ? activeTabClass : 'hover:bg-slate-800 hover:text-white'
-                      }`}
-                    >
-                      <TabIcon className="w-4.5 h-4.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </nav>
+      {/* 1. Global Responsive Top Header */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80 shadow-sm shrink-0">
+        
+        {/* Row 1: Brand details, segmented Workspace Pill Switcher, and profile tools */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md">
+              <LogoIcon className="w-5 h-5 text-white" />
             </div>
+            <span className="font-extrabold text-slate-900 text-base tracking-tight hidden sm:inline">WedStack</span>
+          </div>
 
-            {/* Profile Info */}
-            <div className="p-4 border-t border-slate-850 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
-                  <UserIcon className="w-4 h-4" />
-                </div>
-                <div className="text-left leading-none">
-                  <div className="text-xs font-bold text-white truncate max-w-[120px]">{user?.name || 'Guest User'}</div>
-                  <span className="text-[9px] text-slate-500 font-medium">{user?.role || 'Planner'}</span>
-                </div>
+          {/* Segmented Workspace Toggles (Role-Based Filtering) */}
+          <div className="hidden sm:flex bg-slate-100 p-1 border border-slate-200 rounded-xl text-[10px] font-extrabold shadow-inner">
+            {user?.role !== 'Groom' && (
+              <button
+                onClick={() => setActiveSide('Bride')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  activeSide === 'Bride' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Bride View
+              </button>
+            )}
+            {wedding?.brideAllowsMutual !== false && wedding?.groomAllowsMutual !== false && (
+              <button
+                onClick={() => setActiveSide('Shared')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all ${
+                  activeSide === 'Shared' ? 'bg-white shadow-sm text-indigo-650' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Mutual View
+              </button>
+            )}
+            {user?.role !== 'Bride' && (
+              <button
+                onClick={() => setActiveSide('Groom')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  activeSide === 'Groom' ? 'bg-white shadow-sm text-sky-655' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Groom View
+              </button>
+            )}
+          </div>
+
+          {/* Compact Dropdown Switcher (Mobile Only & Role-Based Filtering) */}
+          <select
+            value={activeSide}
+            onChange={(e) => setActiveSide(e.target.value)}
+            className="sm:hidden px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:outline-none shadow-xs"
+          >
+            {user?.role !== 'Groom' && <option value="Bride">🌸 Bride View</option>}
+            {wedding?.brideAllowsMutual !== false && wedding?.groomAllowsMutual !== false && (
+              <option value="Shared">🤝 Mutual View</option>
+            )}
+            {user?.role !== 'Bride' && <option value="Groom">🤵 Groom View</option>}
+          </select>
+
+          {/* Right Tools */}
+          <div className="flex items-center gap-3">
+            {wedding?.weddingCode && (
+              <div className="hidden lg:flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 select-all" title="Share this code with your partner!">
+                🔑 Code: <span className="font-mono text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">{wedding.weddingCode}</span>
+                <button onClick={copyInviteCode} className="p-0.5 text-slate-400 hover:text-slate-700">
+                  {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                </button>
               </div>
-              <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="p-2 bg-slate-800 hover:bg-slate-750 text-slate-400 rounded-lg transition-colors">
-                <LogOut className="w-3.5 h-3.5" />
+            )}
+
+            <button
+              onClick={() => setShowNotesSidebar(true)}
+              className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl transition-colors flex items-center gap-1 text-[10px] font-bold shadow-xs"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-500 fill-amber-50" />
+              <span className="hidden sm:inline">Reminders ({notes.filter(n => !n.completed).length})</span>
+            </button>
+
+            <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+              <div className="w-8 h-8 rounded-full bg-slate-150 border border-slate-200 flex items-center justify-center text-slate-500" title={`Logged in as ${user?.name || 'Guest'}`}>
+                <UserIcon className="w-4 h-4" />
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 hover:bg-rose-50 text-slate-450 hover:text-rose-600 rounded-xl transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
-      )}
 
-      {/* 1. Sleek Left Sidebar (Desktop Only) */}
-      <aside className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col justify-between shrink-0 border-r border-slate-800 shadow-xl z-20">
-        <div className="flex flex-col">
-          {/* Logo & Header */}
-          <div className="p-6 border-b border-slate-800 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md">
-              <Heart className="w-4 h-4 fill-current" />
-            </div>
-            <div>
-              <span className="font-extrabold text-white text-base tracking-tight">WedStack</span>
-              <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-bold ml-1.5 uppercase">SaaS</span>
-            </div>
-          </div>
-
-          {/* Primary View switching switcher */}
-          <div className="p-4 border-b border-slate-800 space-y-2">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">Workspace Environment</span>
-            
-            <button
-              onClick={() => setActiveSide('Bride')}
-              className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                activeSide === 'Bride' 
-                  ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400' 
-                  : 'hover:bg-slate-800 hover:text-white border border-transparent'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-              Bride Workspace
-            </button>
-            <button
-              onClick={() => setActiveSide('Shared')}
-              className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                activeSide === 'Shared' 
-                  ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400' 
-                  : 'hover:bg-slate-800 hover:text-white border border-transparent'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-              Mutual Shared View
-            </button>
-            <button
-              onClick={() => setActiveSide('Groom')}
-              className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-                activeSide === 'Groom' 
-                  ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' 
-                  : 'hover:bg-slate-800 hover:text-white border border-transparent'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-              Groom Workspace
-            </button>
-          </div>
-
-          {/* Tab Navigation List */}
-          <nav className="p-4 space-y-1">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-2">Planning Modules</span>
+        {/* Row 2: Desktop Tabs Menu (Dedicate a separate line to tabs, preventing clumping) */}
+        <div className="hidden md:block border-t border-slate-100 bg-slate-50/50">
+          <div className="max-w-7xl mx-auto px-8 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
+              { id: 'hub', label: 'Wedding Hub', icon: Heart },
               { id: 'inbox', label: 'AI Quote Inbox', icon: Sparkles },
-              { id: 'comparison', label: 'VS Matrix Grid', icon: ClipboardList },
-              { id: 'budget', label: 'Collaborative Budget', icon: DollarSign },
+              { id: 'comparison', label: 'VS Comparison Matrix', icon: ClipboardList },
+              { id: 'budget', label: 'Tri-Color Budget', icon: DollarSign },
               { id: 'expenses', label: 'Expenses Log', icon: Landmark },
               { id: 'program', label: 'Program details', icon: Music },
-              { id: 'timeline', label: 'Day-of Timeline', icon: Clock },
+              { id: 'timeline', label: 'Execution Timeline', icon: Clock },
               { id: 'terminal', label: 'Coordinator Portal', icon: Share2 }
             ].map(tab => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
               
-              let activeTabClass = 'bg-indigo-600 text-white shadow-md';
+              let activeClass = 'bg-white border border-slate-200/80 text-indigo-650 shadow-xs';
               if (isActive) {
-                if (activeSide === 'Bride') activeTabClass = 'bg-rose-600 text-white shadow-md';
-                else if (activeSide === 'Groom') activeTabClass = 'bg-sky-600 text-white shadow-md';
+                if (activeSide === 'Bride') activeClass = 'bg-white border border-rose-200 text-rose-600 shadow-xs';
+                else if (activeSide === 'Groom') activeClass = 'bg-white border border-sky-200 text-sky-655 shadow-xs';
               }
 
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                    isActive 
-                      ? activeTabClass 
-                      : 'hover:bg-slate-800 hover:text-white'
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    isActive ? activeClass : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  <TabIcon className="w-4.5 h-4.5" />
-                  {tab.label}
+                          <TabIcon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
-          </nav>
-        </div>
-
-        {/* User profile capsule and logout */}
-        <div className="p-4 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-slate-400">
-              <UserIcon className="w-4 h-4" />
-            </div>
-            <div className="text-left leading-none">
-              <div className="text-xs font-bold text-white truncate max-w-[120px]">{user?.name || 'Guest User'}</div>
-              <span className="text-[9px] text-slate-500 font-medium">{user?.role || 'Planner'} role</span>
-            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 bg-slate-800 hover:bg-rose-950/40 hover:text-rose-400 rounded-lg text-slate-400 transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
         </div>
-      </aside>
+      </header>
 
-      {/* Right Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        
-        {/* 2. Sleek top header (glassmorphism) */}
-        <header className="h-16 border-b border-slate-200/80 bg-white/70 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0 z-10">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-              title="Open Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 shadow-xs ${accentColorClass}`}>
-              <Heart className="w-3.5 h-3.5 fill-current" />
-              <span className="hidden sm:inline">{activeSide === 'Shared' ? 'Mutual Planning Workspace' : `${activeSide} Workspace View`}</span>
-              <span className="sm:hidden">{activeSide === 'Shared' ? 'Mutual' : activeSide}</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Live code invitation */}
-            {wedding?.weddingCode && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-full pl-3 pr-1.5 py-1 text-xs text-slate-600 font-semibold shadow-xs">
-                Invite partner: <span className="font-mono font-bold text-slate-800 bg-white border px-2 py-0.5 rounded">{wedding.weddingCode}</span>
-                <button
-                  onClick={copyInviteCode}
-                  className="p-1 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-700"
-                  title="Copy code"
-                >
-                  {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
+      {/* 2. Main Viewport Container */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
+        <div className="max-w-7xl mx-auto">
+          {activeSide === 'Shared' && user?.role !== 'Planner' && (wedding?.brideAllowsMutual === false || wedding?.groomAllowsMutual === false) ? (
+            <div className="max-w-md mx-auto my-16 bg-white border border-slate-100 rounded-3xl p-8 text-center space-y-4 shadow-xl">
+              <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto text-rose-500">
+                <Lock className="w-6 h-6" />
               </div>
-            )}
+              <h3 className="font-extrabold text-lg text-slate-850">Mutual View Restricted</h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                Mutual View collaboration requires permissions from both partners. One or both sides have set this view to private.
+              </p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase border-t border-slate-100 pt-3">
+                Go to your personal workspace settings in the Wedding Hub to toggle permission.
+              </p>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'hub' && (
+                <WeddingHub
+                  wedding={wedding}
+                  vendors={vendors}
+                  token={token}
+                  side={activeSide}
+                  user={user}
+                  timelineEvents={timelineEvents}
+                  onUpdateWedding={(updated) => setWedding(updated)}
+                  onUpdateTimeline={loadData}
+                />
+              )}
 
-            {/* Brain dump reminders drawer toggle */}
+              {activeTab === 'inbox' && (
+                <FastCaptureInbox
+                  token={token}
+                  side={activeSide}
+                  vendors={vendors}
+                  onVendorCreated={(newVendor) => setVendors([...vendors, newVendor])}
+                  onUpdateVendorStatus={handleUpdateVendorStatus}
+                />
+              )}
+              
+              {activeTab === 'comparison' && (
+                <VendorMatrix vendors={vendors} />
+              )}
+
+              {activeTab === 'budget' && (
+                <CollaborativeBudget
+                  wedding={wedding}
+                  vendors={vendors}
+                  token={token}
+                  side={activeSide}
+                  user={user}
+                  onUpdateWedding={(updated) => setWedding(updated)}
+                />
+              )}
+
+              {activeTab === 'expenses' && (
+                <ExpenseManager
+                  expenses={expenses}
+                  token={token}
+                  side={activeSide}
+                  user={user}
+                  wedding={wedding}
+                  onUpdateWedding={(updated) => setWedding(updated)}
+                  onExpenseAdded={handleExpenseAdded}
+                  onExpenseUpdated={handleExpenseUpdated}
+                  onExpenseDeleted={handleExpenseDeleted}
+                  totalBudget={wedding.totalBudget}
+                />
+              )}
+
+              {activeTab === 'program' && (
+                <ProgramPlanner
+                  details={programDetails}
+                  token={token}
+                  onDetailAdded={handleDetailAdded}
+                  onDetailDeleted={handleDetailDeleted}
+                />
+              )}
+
+              {activeTab === 'timeline' && (
+                <DayOfTimeline
+                  events={timelineEvents}
+                  token={token}
+                  vendors={vendors}
+                  onTimelineUpdated={loadData}
+                />
+              )}
+
+              {activeTab === 'terminal' && (
+                <CoordinatorTerminal
+                  weddingId={wedding._id || 'mock-wedding-id'}
+                  mockMode={false}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* 3. Mobile Fixed Bottom Navigation Bar (Shown only on small screens) */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 z-40 flex items-center justify-around py-2.5 px-2 shadow-lg shrink-0">
+        {[
+          { id: 'hub', label: 'Hub', icon: Heart },
+          { id: 'inbox', label: 'AI Inbox', icon: Sparkles },
+          { id: 'comparison', label: 'Vs Matrix', icon: ClipboardList },
+          { id: 'budget', label: 'Budget', icon: DollarSign },
+          { id: 'expenses', label: 'Expense', icon: Landmark },
+          { id: 'program', label: 'Details', icon: Music },
+          { id: 'timeline', label: 'Timeline', icon: Clock },
+          { id: 'terminal', label: 'Portal', icon: Share2 }
+        ].map(tab => {
+          const TabIcon = tab.icon;
+          const isActive = activeTab === tab.id;
+          
+          let activeText = 'text-indigo-600';
+          if (isActive) {
+            if (activeSide === 'Bride') activeText = 'text-rose-600';
+            else if (activeSide === 'Groom') activeText = 'text-sky-600';
+          }
+
+          return (
             <button
-              onClick={() => setShowNotesSidebar(true)}
-              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold shadow-xs"
-              title="Toggle Scratchpad Notes"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${
+                isActive ? `${activeText} font-extrabold scale-105` : 'text-slate-400 font-semibold'
+              }`}
             >
-              <Lightbulb className="w-4 h-4 text-amber-500 fill-amber-100" />
-              <span>Notes ({notes.filter(n => !n.completed).length})</span>
+              <TabIcon className="w-4.5 h-4.5" />
+              <span className="text-[9px] tracking-tight leading-none">{tab.label}</span>
             </button>
-          </div>
-        </header>
-
-        {/* Tab Viewport Scrollable container */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
-            
-            {activeTab === 'inbox' && (
-              <FastCaptureInbox
-                token={token}
-                side={activeSide}
-                vendors={vendors}
-                onVendorCreated={(newVendor) => setVendors([...vendors, newVendor])}
-                onUpdateVendorStatus={handleUpdateVendorStatus}
-              />
-            )}
-            
-            {activeTab === 'comparison' && (
-              <VendorMatrix vendors={vendors} />
-            )}
-
-            {activeTab === 'budget' && (
-              <CollaborativeBudget
-                wedding={wedding}
-                vendors={vendors}
-                token={token}
-                onUpdateWedding={(updated) => setWedding(updated)}
-              />
-            )}
-
-            {activeTab === 'expenses' && (
-              <ExpenseManager
-                expenses={expenses}
-                token={token}
-                onExpenseAdded={handleExpenseAdded}
-                onExpenseUpdated={handleExpenseUpdated}
-                onExpenseDeleted={handleExpenseDeleted}
-                totalBudget={wedding.totalBudget}
-              />
-            )}
-
-            {activeTab === 'program' && (
-              <ProgramPlanner
-                details={programDetails}
-                token={token}
-                onDetailAdded={handleDetailAdded}
-                onDetailDeleted={handleDetailDeleted}
-              />
-            )}
-
-            {activeTab === 'timeline' && (
-              <DayOfTimeline
-                events={timelineEvents}
-                token={token}
-                vendors={vendors}
-                onTimelineUpdated={loadData}
-              />
-            )}
-
-            {activeTab === 'terminal' && (
-              <CoordinatorTerminal
-                weddingId={wedding._id || 'mock-wedding-id'}
-                mockMode={false}
-              />
-            )}
-
-          </div>
-        </main>
+          );
+        })}
       </div>
 
-      {/* Brain Dump Collapsible Sidebar Drawer */}
+      {/* Scratchpad Reminders drawer */}
       {showNotesSidebar && (
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
           <div 
@@ -846,7 +810,7 @@ export default function App() {
             onClick={() => setShowNotesSidebar(false)}
           ></div>
           
-          <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200/80 z-20">
+          <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 z-20">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-1.5">
                 <Lightbulb className="w-5 h-5 text-amber-500 fill-amber-100" />
@@ -854,7 +818,7 @@ export default function App() {
               </div>
               <button 
                 onClick={() => setShowNotesSidebar(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-sm p-1 rounded-md hover:bg-slate-100"
+                className="text-slate-405 text-slate-400 hover:text-slate-655 font-bold text-sm p-1 rounded-md hover:bg-slate-150"
               >
                 ✕
               </button>

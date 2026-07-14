@@ -1,23 +1,26 @@
-import React, { useState } from 'react';
-import { DollarSign, Percent, Shield, Filter, Award, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, Percent, Shield, Filter, Award, Save, Heart, User, Users, Lock } from 'lucide-react';
 
-export default function CollaborativeBudget({ wedding, vendors, token, onUpdateWedding }) {
-  const [totalBudget, setTotalBudget] = useState(wedding.totalBudget || 45000);
-  const [splitRatio, setSplitRatio] = useState(wedding.budgetSplitRatio || 50); // Groom allocation percentage
-  const [filterSide, setFilterSide] = useState('All'); // 'All', 'Groom', 'Bride', 'Shared'
+export default function CollaborativeBudget({ wedding, vendors, token, side, user, onUpdateWedding }) {
+  const initialGroomTarget = Math.round((wedding.totalBudget * (wedding.budgetSplitRatio || 50)) / 100);
+  const initialBrideTarget = Math.round(wedding.totalBudget - initialGroomTarget);
+
+  const [groomTargetInput, setGroomTargetInput] = useState(initialGroomTarget);
+  const [brideTargetInput, setBrideTargetInput] = useState(initialBrideTarget);
+  const [filterSide, setFilterSide] = useState('All');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Aligned shares
-  const groomShare = (totalBudget * splitRatio) / 100;
-  const brideShare = totalBudget - groomShare;
+  useEffect(() => {
+    const gTarget = Math.round((wedding.totalBudget * (wedding.budgetSplitRatio || 50)) / 100);
+    setGroomTargetInput(gTarget);
+    setBrideTargetInput(wedding.totalBudget - gTarget);
+  }, [wedding]);
 
-  // Calculate committed expenses (Booked and Shortlisted packages)
   const getExpenses = (sideVisibility) => {
     return vendors
-      .filter(v => (sideVisibility === 'All' || v.sideVisibility === sideVisibility))
+      .filter(v => v.sideVisibility === sideVisibility)
       .reduce((sum, v) => {
-        // Find cost of Booked or first package if shortlisted
         const pkg = v.packages[0];
         if (pkg && (v.status === 'Booked' || v.status === 'Shortlisted')) {
           return sum + pkg.totalCost;
@@ -26,14 +29,24 @@ export default function CollaborativeBudget({ wedding, vendors, token, onUpdateW
       }, 0);
   };
 
-  const groomExpenses = getExpenses('Groom');
-  const brideExpenses = getExpenses('Bride');
-  const sharedExpenses = getExpenses('Shared');
-  const totalExpenses = groomExpenses + brideExpenses + sharedExpenses;
+  const groomSpentOnly = getExpenses('Groom');
+  const brideSpentOnly = getExpenses('Bride');
+  const sharedSpentTotal = getExpenses('Shared');
 
-  const saveBudgetSettings = async () => {
+  const groomSharedContribution = sharedSpentTotal / 2;
+  const brideSharedContribution = sharedSpentTotal / 2;
+
+  const totalGroomCommitted = groomSpentOnly + groomSharedContribution;
+  const totalBrideCommitted = brideSpentOnly + brideSharedContribution;
+  const totalWeddingExpenses = groomSpentOnly + brideSpentOnly + sharedSpentTotal;
+
+  const handleSaveBudget = async () => {
     setSaving(true);
     setMessage(null);
+    
+    const newTotalBudget = Number(groomTargetInput) + Number(brideTargetInput);
+    const newSplitRatio = newTotalBudget > 0 ? Math.round((Number(groomTargetInput) / newTotalBudget) * 100) : 50;
+
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
@@ -47,270 +60,228 @@ export default function CollaborativeBudget({ wedding, vendors, token, onUpdateW
         method: 'PATCH',
         headers,
         body: JSON.stringify({
-          totalBudget,
-          budgetSplitRatio: splitRatio
+          totalBudget: newTotalBudget,
+          budgetSplitRatio: newSplitRatio
         })
       });
       const data = await res.json();
       if (res.ok) {
         onUpdateWedding(data);
-        setMessage({ type: 'success', text: 'Budget targets successfully synced!' });
+        setMessage({ type: 'success', text: 'Separate targets successfully updated!' });
       } else {
-        setMessage({ type: 'error', text: data.message || 'Failed to update budget.' });
+        setMessage({ type: 'error', text: data.message || 'Failed to update.' });
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Error connecting to database.' });
+      setMessage({ type: 'error', text: 'Database sync error.' });
     } finally {
       setSaving(false);
     }
   };
 
-  // Stacked percentages for progress bar
-  const totalExLimit = Math.max(totalBudget, totalExpenses);
-  const pctGroom = (groomExpenses / totalExLimit) * 100;
-  const pctBride = (brideExpenses / totalExLimit) * 100;
-  const pctShared = (sharedExpenses / totalExLimit) * 100;
-  const pctRemaining = Math.max(0, 100 - pctGroom - pctBride - pctShared);
+  // Determine what to show based on the active side
+  const showBrideBudget = side === 'Bride' || side === 'Shared';
+  const showGroomBudget = side === 'Groom' || side === 'Shared';
+
+  // Role verification gates:
+  // Planner can manage everything.
+  // Bride can only edit Bride side target from Bride side page view.
+  // Groom can only edit Groom side target from Groom side page view.
+  // Shared (Mutual View) is display-only.
+  const isPlanner = user?.role === 'Planner';
+  const canEditBride = isPlanner || (user?.role === 'Bride' && side === 'Bride');
+  const canEditGroom = isPlanner || (user?.role === 'Groom' && side === 'Groom');
+
+  const hasEditAccess = (side === 'Bride' && canEditBride) || (side === 'Groom' && canEditGroom) || isPlanner;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-800">
       
-      {/* Budget overview config */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Core Inputs */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4 lg:col-span-2">
-          <div className="flex justify-between items-center border-b border-slate-150/60 pb-3">
-            <h3 className="font-semibold text-base text-slate-800">Wedding Budget Allocation</h3>
-            {message && (
-              <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-              }`}>
-                {message.text}
-              </span>
-            )}
+      {/* Target Setting Section */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-3 flex-wrap gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-lg text-slate-900">
+                {side === 'Shared' ? 'Mutual Wedding Budget targets' : `${side} Side Target Budget`}
+              </h3>
+              {!hasEditAccess && (
+                <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold uppercase">
+                  <Lock className="w-3 h-3" /> Read-Only
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 font-medium">
+              {side === 'Shared' 
+                ? 'Display view of mutual targets. Manage budgets from your respective side page.'
+                : `Manage and set target limits. Logged in as ${user?.role || 'Guest'}.`
+              }
+            </p>
           </div>
+          {message && (
+            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+              message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+            }`}>
+              {message.text}
+            </span>
+          )}
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            
-            {/* Total Budget Target */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-slate-400" />
-                Global Target Budget
-              </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          {/* Bride side Budget Input */}
+          {showBrideBudget && (
+            <div className="bg-rose-50/20 border border-rose-100 rounded-3xl p-5 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest block">🌸 Bride Target Budget</span>
+                {!canEditBride && <span className="text-[9px] font-bold text-slate-400 flex items-center gap-0.5"><Lock className="w-2.5 h-2.5" /> Lock</span>}
+              </div>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-sm">$</span>
+                <span className="absolute left-3.5 top-2 text-sm font-bold text-rose-700">₹</span>
                 <input
                   type="number"
-                  className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 text-sm font-semibold"
-                  value={totalBudget}
-                  onChange={(e) => setTotalBudget(parseInt(e.target.value) || 0)}
+                  disabled={!canEditBride}
+                  className="w-full pl-7 pr-3 py-1.5 border border-rose-200 rounded-xl text-sm font-bold text-rose-900 focus:ring-2 focus:ring-rose-500/10 focus:border-rose-400 outline-none bg-white disabled:bg-slate-50 disabled:text-slate-550"
+                  value={brideTargetInput}
+                  onChange={(e) => setBrideTargetInput(parseInt(e.target.value) || 0)}
                 />
               </div>
+              <div className="text-[10px] text-rose-500 font-medium">Controls the Bride side allocation limits.</div>
             </div>
+          )}
 
-            {/* Split Ratio Slider */}
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <span className="flex items-center gap-1">
-                  <Percent className="w-3.5 h-3.5 text-slate-400" />
-                  Split (Groom / Bride)
-                </span>
-                <span className="text-indigo-600 font-bold">{splitRatio}% / {100 - splitRatio}%</span>
+          {/* Groom side Budget Input */}
+          {showGroomBudget && (
+            <div className="bg-sky-50/20 border border-sky-100 rounded-3xl p-5 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest block">🤵 Groom Target Budget</span>
+                {!canEditGroom && <span className="text-[9px] font-bold text-slate-400 flex items-center gap-0.5"><Lock className="w-2.5 h-2.5" /> Lock</span>}
               </div>
-              <input
-                type="range"
-                min="10"
-                max="90"
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                value={splitRatio}
-                onChange={(e) => setSplitRatio(parseInt(e.target.value))}
-              />
-              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>More Groom Share</span>
-                <span>More Bride Share</span>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2 text-sm font-bold text-sky-700">₹</span>
+                <input
+                  type="number"
+                  disabled={!canEditGroom}
+                  className="w-full pl-7 pr-3 py-1.5 border border-sky-200 rounded-xl text-sm font-bold text-sky-900 focus:ring-2 focus:ring-sky-500/10 focus:border-sky-400 outline-none bg-white disabled:bg-slate-50 disabled:text-slate-550"
+                  value={groomTargetInput}
+                  onChange={(e) => setGroomTargetInput(parseInt(e.target.value) || 0)}
+                />
               </div>
+              <div className="text-[10px] text-sky-500 font-medium">Controls the Groom side allocation limits.</div>
             </div>
+          )}
+        </div>
 
-          </div>
-
-          {/* Target Share Display Cards */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600">Groom Pool Share ({splitRatio}%)</span>
-              <div className="text-xl font-extrabold text-sky-800">${groomShare.toLocaleString()}</div>
-            </div>
-            <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Bride Pool Share ({100 - splitRatio}%)</span>
-              <div className="text-xl font-extrabold text-rose-800">${brideShare.toLocaleString()}</div>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-end">
+        {hasEditAccess && (
+          <div className="pt-1 flex justify-end">
             <button
-              onClick={saveBudgetSettings}
+              onClick={handleSaveBudget}
               disabled={saving}
-              className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm"
             >
               <Save className="w-3.5 h-3.5" />
               {saving ? 'Syncing...' : 'Save Targets'}
             </button>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Expenses Summary Ring */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div>
-            <h4 className="font-semibold text-sm text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-3">Committed Cost Tracker</h4>
-            <div className="py-4 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-medium">Total Committed:</span>
-                <span className="font-bold text-slate-800">${totalExpenses.toLocaleString()}</span>
+      {/* Side-by-Side Budget Tracker Command Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Bride Budget Status */}
+        {showBrideBudget && (
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest">Bride Side Ledger</h4>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-medium">Remaining Cash Allocation:</span>
-                <span className={`font-bold ${totalBudget >= totalExpenses ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  ${(totalBudget - totalExpenses).toLocaleString()}
-                </span>
+              <span className="text-[10px] text-slate-400 font-bold">Target: ${brideTargetInput.toLocaleString()}</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-rose-50/20 p-3 rounded-2xl border border-rose-100/50">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Bride Only</span>
+                <span className="text-sm font-black text-rose-700">${brideSpentOnly.toLocaleString()}</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Shared Share</span>
+                <span className="text-sm font-black text-slate-700">${brideSharedContribution.toLocaleString()}</span>
+              </div>
+              <div className="bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Total Spent</span>
+                <span className="text-sm font-black text-rose-805">${totalBrideCommitted.toLocaleString()}</span>
               </div>
             </div>
+
+            <div className="flex justify-between items-center text-xs pt-1">
+              <span className="text-slate-400 font-semibold">Remaining Limit Balance:</span>
+              <span className={`font-black text-sm ${brideTargetInput >= totalBrideCommitted ? 'text-emerald-600' : 'text-rose-600'}`}>
+                ${(brideTargetInput - totalBrideCommitted).toLocaleString()}
+              </span>
+            </div>
           </div>
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 text-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Budget Utilisation</span>
-            <span className={`text-2xl font-black ${totalExpenses > totalBudget ? 'text-rose-600 animate-pulse' : 'text-indigo-600'}`}>
-              {totalBudget > 0 ? Math.round((totalExpenses / totalBudget) * 100) : 0}%
-            </span>
+        )}
+
+        {/* Groom Budget Status */}
+        {showGroomBudget && (
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest">Groom Side Ledger</h4>
+              </div>
+              <span className="text-[10px] text-slate-400 font-bold">Target: ${groomTargetInput.toLocaleString()}</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-sky-50/20 p-3 rounded-2xl border border-sky-100/50">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Groom Only</span>
+                <span className="text-sm font-black text-sky-700">${groomSpentOnly.toLocaleString()}</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Shared Share</span>
+                <span className="text-sm font-black text-slate-700">${groomSharedContribution.toLocaleString()}</span>
+              </div>
+              <div className="bg-sky-50/50 p-3 rounded-2xl border border-sky-100">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase">Total Spent</span>
+                <span className="text-sm font-black text-sky-850">${totalGroomCommitted.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-xs pt-1">
+              <span className="text-slate-400 font-semibold">Remaining Limit Balance:</span>
+              <span className={`font-black text-sm ${groomTargetInput >= totalGroomCommitted ? 'text-emerald-600' : 'text-rose-600'}`}>
+                ${(groomTargetInput - totalGroomCommitted).toLocaleString()}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 
-      {/* Tri-Color Stacked Expense Bar Chart */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-        <div className="flex justify-between items-center">
-          <h4 className="font-semibold text-sm text-slate-700 uppercase tracking-wider">Dynamic Budget Pool Chart</h4>
-          <span className="text-xs text-slate-400">Values based on Booked / Shortlisted contracts</span>
-        </div>
-
-        {/* The Bar */}
+      {/* Double Stacked Allocation Chart */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+        <h4 className="font-bold text-xs text-slate-700 uppercase tracking-widest">Workspace Allocation Chart</h4>
+        
         <div className="h-6 w-full rounded-full overflow-hidden flex bg-slate-100 shadow-inner">
-          <div style={{ width: `${pctGroom}%` }} className="bg-sky-500 transition-all duration-500" title={`Groom Pool: $${groomExpenses}`}></div>
-          <div style={{ width: `${pctShared}%` }} className="bg-indigo-500 transition-all duration-500" title={`Shared Pool: $${sharedExpenses}`}></div>
-          <div style={{ width: `${pctBride}%` }} className="bg-rose-500 transition-all duration-500" title={`Bride Pool: $${brideExpenses}`}></div>
-          <div style={{ width: `${pctRemaining}%` }} className="bg-slate-200 transition-all duration-500" title={`Available: $${Math.max(0, totalBudget - totalExpenses)}`}></div>
+          <div style={{ width: `${(groomSpentOnly / (totalWeddingExpenses || 1)) * 100}%` }} className="bg-sky-500" title={`Groom Only: ₹${groomSpentOnly}`}></div>
+          <div style={{ width: `${(sharedSpentTotal / (totalWeddingExpenses || 1)) * 100}%` }} className="bg-indigo-500" title={`Shared: ₹${sharedSpentTotal}`}></div>
+          <div style={{ width: `${(brideSpentOnly / (totalWeddingExpenses || 1)) * 100}%` }} className="bg-rose-500" title={`Bride Only: ₹${brideSpentOnly}`}></div>
         </div>
 
-        {/* Legend */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-semibold pt-2">
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-sky-500 block"></span>
-            <div className="flex flex-col">
-              <span className="text-slate-500 text-[10px] uppercase font-bold">Groom Pool</span>
-              <span className="text-slate-800">${groomExpenses.toLocaleString()} ({Math.round(pctGroom)}%)</span>
-            </div>
+        <div className="grid grid-cols-3 gap-4 text-xs font-bold pt-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-sky-500"></span>
+            <span>Groom: ${groomSpentOnly.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-indigo-50 block"></span>
-            <div className="flex flex-col">
-              <span className="text-slate-500 text-[10px] uppercase font-bold">Shared Pool</span>
-              <span className="text-slate-800">${sharedExpenses.toLocaleString()} ({Math.round(pctShared)}%)</span>
-            </div>
+          <div className="flex items-center gap-1.5 justify-center">
+            <span className="w-3 h-3 rounded bg-indigo-500"></span>
+            <span>Shared: ${sharedSpentTotal.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-rose-500 block"></span>
-            <div className="flex flex-col">
-              <span className="text-slate-500 text-[10px] uppercase font-bold">Bride Pool</span>
-              <span className="text-slate-800">${brideExpenses.toLocaleString()} ({Math.round(pctBride)}%)</span>
-            </div>
+          <div className="flex items-center gap-1.5 justify-end">
+            <span className="w-3 h-3 rounded bg-rose-500"></span>
+            <span>Bride: ${brideSpentOnly.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded bg-slate-200 block"></span>
-            <div className="flex flex-col">
-              <span className="text-slate-500 text-[10px] uppercase font-bold">Available Target</span>
-              <span className="text-emerald-600">${Math.max(0, totalBudget - totalExpenses).toLocaleString()} ({Math.round(pctRemaining)}%)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filterable Itemized Budget Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-500" />
-            <h4 className="font-bold text-xs text-slate-600 uppercase tracking-wider">Itemised Vendor Budgets</h4>
-          </div>
-
-          {/* Toggle filter */}
-          <div className="flex gap-1 bg-white p-1 border border-slate-200 rounded-lg text-xs font-semibold shadow-sm">
-            {['All', 'Shared', 'Bride', 'Groom'].map(pool => (
-              <button
-                key={pool}
-                onClick={() => setFilterSide(pool)}
-                className={`px-3 py-1 rounded-md transition-all ${
-                  filterSide === pool
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {pool} {pool !== 'All' ? 'Pool' : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-150 text-slate-500 font-bold uppercase tracking-wider">
-                <th className="p-4">Vendor Name</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Visibility Pool</th>
-                <th className="p-4">Contract Status</th>
-                <th className="p-4 text-right">Committed Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vendors
-                .filter(v => filterSide === 'All' || v.sideVisibility === filterSide)
-                .map(v => {
-                  const pkg = v.packages[0];
-                  const cost = pkg ? pkg.totalCost : 0;
-                  const isCounted = v.status === 'Booked' || v.status === 'Shortlisted';
-                  return (
-                    <tr key={v._id} className="border-b border-slate-100 hover:bg-slate-50/30">
-                      <td className="p-4 font-bold text-slate-700">{v.vendorName}</td>
-                      <td className="p-4 text-slate-500">{v.category}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          v.sideVisibility === 'Bride' ? 'bg-rose-50 text-rose-600' :
-                          v.sideVisibility === 'Groom' ? 'bg-sky-50 text-sky-600' :
-                          'bg-indigo-50 text-indigo-600'
-                        }`}>
-                          {v.sideVisibility}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded font-semibold text-[9px] ${
-                          isCounted ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {v.status} {isCounted ? '(Counted)' : '(Estimate)'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right font-extrabold text-slate-800">
-                        ${cost.toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
-              {vendors.filter(v => filterSide === 'All' || v.sideVisibility === filterSide).length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center py-8 text-slate-400 italic">No budget items match this visibility pool.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
 

@@ -182,7 +182,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
             </p>
             <textarea
               className="w-full h-80 p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-sm font-mono bg-slate-50/50 placeholder:text-slate-400"
-              placeholder="Example:&#10;Hey! Here is the pricing for Elegance Photography:&#10;- Gold Package: $3500. Includes 8 hours of wedding coverage, digital gallery, and premium custom photo book.&#10;- Fine print: Extra hour is $200. Travel charges apply outside metro area ($50/hour)."
+              placeholder="Example:&#10;Hey! Here is the pricing for Elegance Photography:&#10;- Gold Package: ₹3500. Includes 8 hours of wedding coverage, digital gallery, and premium custom photo book.&#10;- Fine print: Extra hour is ₹200. Travel charges apply outside metro area (₹50/hour)."
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
             />

@@ -48,8 +48,27 @@ export default function App() {
   // Workspace Accent State: 'Bride', 'Groom', 'Shared'
   const [activeSide, setActiveSide] = useState('Shared');
   
-  // Dashboard Tabs
-  const [activeTab, setActiveTab] = useState('hub');
+  // Dashboard Tabs (Initialize from URL hash if available)
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    return hash || 'hub';
+  });
+
+  // Keep URL hash in sync with active tab
+  useEffect(() => {
+    window.location.hash = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab]);
   
   // Auth Form State
   const [isRegister, setIsRegister] = useState(false);
@@ -715,6 +734,7 @@ export default function App() {
                 <CollaborativeBudget
                   wedding={wedding}
                   vendors={vendors}
+                  expenses={expenses}
                   token={token}
                   side={activeSide}
                   user={user}

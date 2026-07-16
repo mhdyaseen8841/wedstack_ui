@@ -1,14 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight } from 'lucide-react';
+import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight, CheckSquare, ListTodo } from 'lucide-react';
 
-export default function WeddingHub({ wedding, vendors, token, side, user, timelineEvents, onUpdateWedding, onUpdateTimeline }) {
+export default function WeddingHub({ 
+  wedding, 
+  vendors, 
+  neededServices = [], 
+  token, 
+  side, 
+  user, 
+  timelineEvents, 
+  onUpdateWedding, 
+  onUpdateTimeline, 
+  onToggleService, 
+  onAddService, 
+  onUpdateService, 
+  onDeleteService,
+  onNavigateToTab
+}) {
   const isPlanner = user?.role === 'Planner';
   const isBride = user?.role === 'Bride';
   const isGroom = user?.role === 'Groom';
 
   // Real-time countdown state
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, months: 0, remainingDays: 0 });
+  const [isMonthMode, setIsMonthMode] = useState(false);
   
+  // Dialog Popups state
+  const [showAddProgramModal, setShowAddProgramModal] = useState(false);
+  const [showMutualSharingModal, setShowMutualSharingModal] = useState(false);
+  
+  // Service CRUD Manager state
+  const [showServiceManager, setShowServiceManager] = useState(false);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceCategory, setNewServiceCategory] = useState('Venue');
+  const [newServiceIcon, setNewServiceIcon] = useState('🏢');
+  
+  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editIcon, setEditIcon] = useState('');
+
   // Event program form states
   const [eventDate, setEventDate] = useState('');
   const [eventName, setEventName] = useState('');
@@ -37,7 +68,7 @@ export default function WeddingHub({ wedding, vendors, token, side, user, timeli
       const diff = target.getTime() - now.getTime();
 
       if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, months: 0, remainingDays: 0 });
         return;
       }
 
@@ -46,7 +77,32 @@ export default function WeddingHub({ wedding, vendors, token, side, user, timeli
       const minutes = Math.floor((diff / 1000 / 60) % 60);
       const seconds = Math.floor((diff / 1000) % 60);
 
-      setTimeLeft({ days, hours, minutes, seconds });
+      // Calendar month & remaining days breakdown calculation
+      let months = 0;
+      let remainingDays = 0;
+      if (diff > 0) {
+        const yearDiff = target.getFullYear() - now.getFullYear();
+        const monthDiff = target.getMonth() - now.getMonth();
+        let totalMonths = yearDiff * 12 + monthDiff;
+
+        // If target day of month is less than today's day, subtract 1 month
+        if (target.getDate() < now.getDate()) {
+          totalMonths--;
+        }
+
+        months = Math.max(0, totalMonths);
+
+        // Find reference date after adding full months
+        const tempNow = new Date(now.getFullYear(), now.getMonth() + months, now.getDate());
+        // Adjust for month end overflow
+        if (tempNow.getDate() !== now.getDate()) {
+          tempNow.setDate(0);
+        }
+        const remainingMs = target.getTime() - tempNow.getTime();
+        remainingDays = Math.max(0, Math.floor(remainingMs / (1000 * 60 * 60 * 24)));
+      }
+
+      setTimeLeft({ days, hours, minutes, seconds, months, remainingDays });
     };
 
     calculateTime();
@@ -225,186 +281,213 @@ export default function WeddingHub({ wedding, vendors, token, side, user, timeli
 
           {/* Countdown ticking blocks */}
           {wedding?.weddingDate ? (
-            <div className="grid grid-cols-4 gap-2.5 sm:gap-4 max-w-sm w-full pt-1">
-              {[
-                { label: 'Days', value: timeLeft.days },
-                { label: 'Hours', value: timeLeft.hours },
-                { label: 'Minutes', value: timeLeft.minutes },
-                { label: 'Seconds', value: timeLeft.seconds }
-              ].map(block => (
-                <div key={block.label} className="bg-white/5 border border-white/10 rounded-xl py-2.5 px-1.5 backdrop-blur-md shadow-lg flex flex-col justify-center items-center hover:border-white/20 transition-colors">
-                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">{String(block.value).padStart(2, '0')}</span>
-                  <span className="text-[8px] uppercase tracking-widest font-bold text-indigo-250 mt-1">{block.label}</span>
-                </div>
-              ))}
+            <div className="space-y-3.5 w-full flex flex-col items-center">
+              <div className={`grid ${isMonthMode ? 'grid-cols-5 max-w-md' : 'grid-cols-4 max-w-sm'} gap-2 sm:gap-3 w-full pt-1 transition-all duration-300`}>
+                {(isMonthMode ? [
+                  { label: 'Months', value: timeLeft.months || 0 },
+                  { label: 'Days', value: timeLeft.remainingDays || 0 },
+                  { label: 'Hours', value: timeLeft.hours || 0 },
+                  { label: 'Minutes', value: timeLeft.minutes || 0 },
+                  { label: 'Seconds', value: timeLeft.seconds || 0 }
+                ] : [
+                  { label: 'Days', value: timeLeft.days || 0 },
+                  { label: 'Hours', value: timeLeft.hours || 0 },
+                  { label: 'Minutes', value: timeLeft.minutes || 0 },
+                  { label: 'Seconds', value: timeLeft.seconds || 0 }
+                ]).map(block => (
+                  <div key={block.label} className="bg-white/5 border border-white/10 rounded-xl py-2 px-1 backdrop-blur-md shadow-lg flex flex-col justify-center items-center hover:border-white/20 transition-all">
+                    <span className="text-lg sm:text-xl font-black text-white tracking-tight leading-none">{String(block.value).padStart(2, '0')}</span>
+                    <span className="text-[8px] uppercase tracking-wider font-bold text-indigo-250 mt-1 truncate max-w-full">{block.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setIsMonthMode(!isMonthMode)} 
+                className="text-[8px] sm:text-[9px] font-bold text-white/40 hover:text-white/80 transition-colors uppercase tracking-widest bg-white/5 px-3 py-1 rounded-lg border border-white/5 hover:border-white/10"
+              >
+                {isMonthMode ? "Show Total Days Mode" : "Show Months & Days Mode"}
+              </button>
             </div>
           ) : (
-            <div className="py-2 text-slate-300 italic text-xs">
-              No main wedding date configured. Use the form below to configure.
+            <div className="py-2 text-slate-350 italic text-xs">
+              No main wedding date configured. Use the "+ Add Day Program" modal to schedule one!
             </div>
           )}
         </div>
       </div>
 
-      {/* 2. Page Content Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        
-        {/* Left column: Add multi-date program form */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 lg:col-span-1">
-          <div>
-            <h3 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest pb-3 border-b border-slate-100">Add Day Program</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Add sub-events or programs to specific dates. E.g., morning puja, evening reception.</p>
-          </div>
-
-          {message && (
-            <div className={`p-3 rounded-xl text-xs font-bold ${
-              message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-            }`}>
-              {message.text}
-            </div>
-          )}
-
-          <form onSubmit={handleAddProgram} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Event Date</label>
-              <input
-                type="date"
-                required
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
+      {/* Popups / Dialogs Backdrops */}
+      {showAddProgramModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowAddProgramModal(false)} 
+              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100">Add Day Program</h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">Add sub-events or programs to specific dates. E.g., morning puja, evening reception.</p>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Program / Event Name</label>
-              <input
-                type="text"
-                required
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                placeholder="e.g. Sangeet / Morning Ceremony / Evening Reception"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Time</label>
-                <select
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-700 font-semibold"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                >
-                  <option value="07:00 AM">07:00 AM</option>
-                  <option value="08:00 AM">08:00 AM</option>
-                  <option value="09:00 AM">09:00 AM</option>
-                  <option value="10:00 AM">10:00 AM</option>
-                  <option value="11:00 AM">11:00 AM</option>
-                  <option value="12:00 PM">12:00 PM</option>
-                  <option value="01:00 PM">01:00 PM</option>
-                  <option value="02:00 PM">02:00 PM</option>
-                  <option value="03:00 PM">03:00 PM</option>
-                  <option value="04:00 PM">04:00 PM</option>
-                  <option value="05:00 PM">05:00 PM</option>
-                  <option value="06:00 PM">06:00 PM</option>
-                  <option value="07:00 PM">07:00 PM</option>
-                  <option value="08:00 PM">08:00 PM</option>
-                  <option value="09:00 PM">09:00 PM</option>
-                  <option value="10:00 PM">10:00 PM</option>
-                  <option value="11:00 PM">11:00 PM</option>
-                </select>
+            {message && (
+              <div className={`p-3 rounded-xl text-xs font-bold mb-4 ${
+                message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+              }`}>
+                {message.text}
               </div>
+            )}
+
+            <form onSubmit={handleAddProgram} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Duration (Min)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Event Date</label>
                 <input
-                  type="number"
-                  className="w-full px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
+                  type="date"
+                  required
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Lead Coordinator</label>
-              <input
-                type="text"
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                placeholder="Uncle Mark (+1-555-0104)"
-                value={coordinator}
-                onChange={(e) => setCoordinator(e.target.value)}
-              />
-            </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Program / Event Name</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
+                  placeholder="e.g. Sangeet / Morning Ceremony"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                />
+              </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Location Name</label>
-              <input
-                type="text"
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                placeholder="e.g. Grand Ballroom Plaza"
-                value={locationName}
-                onChange={(e) => setLocationName(e.target.value)}
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Time</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-700 font-semibold focus:outline-none"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  >
+                    <option value="07:00 AM">07:00 AM</option>
+                    <option value="08:00 AM">08:00 AM</option>
+                    <option value="09:00 AM">09:00 AM</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="01:00 PM">01:00 PM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="03:00 PM">03:00 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="05:00 PM">05:00 PM</option>
+                    <option value="06:00 PM">06:00 PM</option>
+                    <option value="07:00 PM">07:00 PM</option>
+                    <option value="08:00 PM">08:00 PM</option>
+                    <option value="09:00 PM">09:00 PM</option>
+                    <option value="10:00 PM">10:00 PM</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Duration (Min)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-slate-50/50"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Coordinates (Optional - For Map Embed)</label>
-              <input
-                type="text"
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                placeholder="e.g. 40.7128,-74.0060"
-                value={coordinates}
-                onChange={(e) => setCoordinates(e.target.value)}
-              />
-            </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Lead Coordinator</label>
+                <input
+                  type="text"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
+                  placeholder="Uncle Mark (+1-555-0104)"
+                  value={coordinator}
+                  onChange={(e) => setCoordinator(e.target.value)}
+                />
+              </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Assign Event Scope</label>
-              <select
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:outline-none"
-                value={assignedSide}
-                onChange={(e) => setAssignedSide(e.target.value)}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Location Name</label>
+                <input
+                  type="text"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
+                  placeholder="e.g. Grand Ballroom Plaza"
+                  value={locationName}
+                  onChange={(e) => setLocationName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Coordinates (Optional)</label>
+                <input
+                  type="text"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
+                  placeholder="e.g. 40.7128,-74.0060"
+                  value={coordinates}
+                  onChange={(e) => setCoordinates(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Assign Event Scope</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:outline-none"
+                  value={assignedSide}
+                  onChange={(e) => setAssignedSide(e.target.value)}
+                >
+                  <option value="Shared">Shared / Both Sides</option>
+                  <option value="Bride">Bride Side Only</option>
+                  <option value="Groom">Groom Side Only</option>
+                </select>
+              </div>
+
+              <div className="flex items-center pt-2">
+                <input
+                  type="checkbox"
+                  id="isMainDayCheckbox"
+                  className="rounded text-indigo-650 mr-2 focus:ring-0 cursor-pointer"
+                  checked={isMainDay}
+                  onChange={(e) => setIsMainDay(e.target.checked)}
+                />
+                <label htmlFor="isMainDayCheckbox" className="text-xs text-slate-650 font-bold select-none cursor-pointer flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-300" />
+                  Set as Main Wedding Ceremony Day
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm mt-2"
               >
-                <option value="Shared">Shared / Both Sides</option>
-                <option value="Bride">Bride Side Only</option>
-                <option value="Groom">Groom Side Only</option>
-              </select>
-            </div>
-
-            <div className="flex items-center pt-2">
-              <input
-                type="checkbox"
-                id="isMainDayCheckbox"
-                className="rounded text-indigo-650 mr-2 focus:ring-0"
-                checked={isMainDay}
-                onChange={(e) => setIsMainDay(e.target.checked)}
-              />
-              <label htmlFor="isMainDayCheckbox" className="text-xs text-slate-650 font-bold select-none cursor-pointer flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-300" />
-                Set as Main Wedding Ceremony Day
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> {submitting ? 'Adding...' : 'Save Program Day'}
-            </button>
-          </form>
+                <Plus className="w-4 h-4" /> {submitting ? 'Adding...' : 'Save Program Day'}
+              </button>
+            </form>
+          </div>
         </div>
+      )}
 
-        {/* Access Permissions Card (Tied to Mongoose DB) */}
-        {!isPlanner && (
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-3">
-            <div>
-              <h3 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest pb-3 border-b border-slate-100">Mutual View Sharing</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-1">Control if your partner is allowed to collaborate with you on the Mutual View page.</p>
+      {showMutualSharingModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-sm w-full relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowMutualSharingModal(false)} 
+              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100">Mutual View Sharing</h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5 leading-relaxed">Control if your partner is allowed to collaborate with you on the Mutual View page.</p>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl hover:bg-slate-100/50 transition-colors text-xs font-bold text-slate-700">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none bg-slate-50 border border-slate-200 px-3.5 py-3 rounded-xl hover:bg-slate-100/50 transition-colors text-xs font-bold text-slate-700 mt-2">
               <input
                 type="checkbox"
                 className="rounded text-indigo-650 focus:ring-0 mr-1"
@@ -434,17 +517,36 @@ export default function WeddingHub({ wedding, vendors, token, side, user, timeli
               <span>Allow Partner to access Mutual View</span>
             </label>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Right column: Multi-Date Events RoadMap timeline list */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* 2. Page Content Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        
+        {/* Full width timeline list */}
+        <div className="lg:col-span-3 space-y-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" />
                 <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-widest">Multi-Day Wedding Roadmap</h3>
               </div>
-              <span className="text-[10px] text-slate-400 font-bold">Chronological Roadmap</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddProgramModal(true)}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs uppercase tracking-wider"
+                >
+                  + Add Day Program
+                </button>
+                {!isPlanner && (
+                  <button
+                    onClick={() => setShowMutualSharingModal(true)}
+                    className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-slate-200 shadow-xs uppercase tracking-wider"
+                  >
+                    🔒 Mutual Sharing
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4 relative pl-4 border-l border-slate-200">
@@ -529,6 +631,247 @@ export default function WeddingHub({ wedding, vendors, token, side, user, timeli
                   No programs logged. Use the form on the left to schedule your wedding events roadmap!
                 </div>
               )}
+            </div>
+          </div>
+          {/* Needed Services Checklist Card */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ListTodo className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-widest">Needed Services Checklist</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowServiceManager(!showServiceManager)}
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg"
+                >
+                  {showServiceManager ? "✕ Close Editor" : "🔧 Edit Needed Services"}
+                </button>
+                <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Auto-syncs with Vendor Bookings</span>
+              </div>
+            </div>
+
+            {/* Inline Dynamic CRUD Service Manager */}
+            {showServiceManager && (
+              <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-150 space-y-4 shadow-inner">
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-1">⚙️ Custom Services CRUD builder</h4>
+                
+                {/* Add service form */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-slate-150 shadow-xs">
+                  <div className="md:col-span-2">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Service name</label>
+                    <input 
+                      type="text"
+                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 bg-white font-medium"
+                      placeholder="e.g. Wedding Hall Auditorium"
+                      value={newServiceName}
+                      onChange={(e) => setNewServiceName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Category</label>
+                    <select
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-655 font-bold outline-none"
+                      value={newServiceCategory}
+                      onChange={(e) => setNewServiceCategory(e.target.value)}
+                    >
+                      <option value="Venue">Venue</option>
+                      <option value="Catering">Catering</option>
+                      <option value="Photography">Photography</option>
+                      <option value="Decor">Decor</option>
+                      <option value="Music">Music</option>
+                      <option value="Makeup">Makeup</option>
+                      <option value="Attire">Attire</option>
+                      <option value="Invitations">Invitations</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="w-14">
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Emoji</label>
+                      <input 
+                        type="text"
+                        maxLength="2"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-center bg-white outline-none"
+                        value={newServiceIcon}
+                        onChange={(e) => setNewServiceIcon(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!newServiceName.trim()) return;
+                        onAddService(newServiceName, newServiceCategory, newServiceIcon);
+                        setNewServiceName('');
+                      }}
+                      className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Services list with Edit/Delete options */}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {neededServices.map(service => (
+                    <div key={service._id} className="flex justify-between items-center p-2.5 bg-white border border-slate-150 rounded-xl gap-3">
+                      {editingServiceId === service._id ? (
+                        <div className="flex items-center gap-2 flex-grow">
+                          <input 
+                            type="text"
+                            maxLength="2"
+                            className="w-10 px-1 py-0.5 border border-slate-200 rounded text-center text-xs"
+                            value={editIcon}
+                            onChange={(e) => setEditIcon(e.target.value)}
+                          />
+                          <input 
+                            type="text"
+                            className="px-2 py-0.5 border border-slate-200 rounded text-xs flex-grow"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                          />
+                          <select
+                            className="px-1.5 py-0.5 border border-slate-200 rounded text-xs bg-white"
+                            value={editCategory}
+                            onChange={(e) => setEditCategory(e.target.value)}
+                          >
+                            <option value="Venue">Venue</option>
+                            <option value="Catering">Catering</option>
+                            <option value="Photography">Photography</option>
+                            <option value="Decor">Decor</option>
+                            <option value="Music">Music</option>
+                            <option value="Makeup">Makeup</option>
+                            <option value="Attire">Attire</option>
+                            <option value="Invitations">Invitations</option>
+                            <option value="Others">Others</option>
+                          </select>
+                          <button
+                            onClick={() => {
+                              onUpdateService(service._id, editName, editCategory, editIcon);
+                              setEditingServiceId(null);
+                            }}
+                            className="px-2.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingServiceId(null)}
+                            className="px-2 py-0.5 bg-slate-100 border rounded text-[10px]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm">{service.icon}</span>
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-slate-800 block truncate">{service.name}</span>
+                              <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Category: {service.category}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingServiceId(service._id);
+                                setEditName(service.name);
+                                setEditCategory(service.category);
+                                setEditIcon(service.icon);
+                              }}
+                              className="text-[10px] font-bold text-indigo-650 hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => onDeleteService(service._id)}
+                              className="text-[10px] font-bold text-rose-600 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {neededServices.map(service => {
+                const autoBooked = vendors.some(v => v.category.toLowerCase() === service.category.toLowerCase() && v.status === 'Booked');
+                
+                const brideChecked = service.brideCompleted || false;
+                const groomChecked = service.groomCompleted || false;
+                
+                const isCompleted = autoBooked || (
+                  side === 'Bride' ? brideChecked : side === 'Groom' ? groomChecked : (brideChecked && groomChecked)
+                );
+
+                return (
+                  <div 
+                    key={service._id} 
+                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                      isCompleted 
+                        ? 'bg-emerald-50/20 border-emerald-100 text-emerald-850' 
+                        : 'bg-slate-50/40 border-slate-200/60 text-slate-700 hover:border-indigo-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Clicking the service title redirects to the vendor page filtered by category */}
+                      <div 
+                        onClick={() => {
+                          if (onNavigateToTab) {
+                            onNavigateToTab('inbox', service.category);
+                          }
+                        }}
+                        className="flex items-center gap-2.5 min-w-0 cursor-pointer group/item flex-1"
+                        title="Click to view & manage vendors for this service category"
+                      >
+                        <span className="text-base shrink-0 group-hover/item:scale-110 transition-transform">{service.icon}</span>
+                        <div className="min-w-0">
+                          <span className={`text-xs font-bold block truncate group-hover/item:text-indigo-650 ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                            {service.name}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-semibold block uppercase">
+                            Category: {service.category} ↗
+                          </span>
+                        </div>
+                      </div>
+
+                      {autoBooked && (
+                        <span className="text-[8px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5 shrink-0">
+                          <Check className="w-2.5 h-2.5" /> Secured
+                        </span>
+                      )}
+                    </div>
+
+                    {!autoBooked && (
+                      <div className="border-t border-slate-200/60 pt-2 flex items-center justify-between text-[10px] text-slate-450 font-bold uppercase">
+                        {side === 'Shared' ? (
+                          <div className="flex justify-between w-full">
+                            <span className="flex items-center gap-1">
+                              🤵 Groom: {groomChecked ? <span className="text-emerald-600">✓ Done</span> : <span className="text-slate-400">⚡ Pending</span>}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              🌸 Bride: {brideChecked ? <span className="text-rose-600">✓ Done</span> : <span className="text-slate-400">⚡ Pending</span>}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between w-full">
+                            <span>Status: {isCompleted ? 'Completed' : 'Pending'}</span>
+                            <input
+                              type="checkbox"
+                              className="rounded text-indigo-655 focus:ring-0 w-4 h-4 cursor-pointer"
+                              checked={side === 'Bride' ? brideChecked : groomChecked}
+                              onChange={(e) => onToggleService(service._id, e.target.checked, side)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

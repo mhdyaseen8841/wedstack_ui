@@ -39,6 +39,8 @@ export default function App() {
   const [notes, setNotes] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [programDetails, setProgramDetails] = useState([]);
+  const [neededServices, setNeededServices] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState(null);
   
   // Sidebar Toggles
   const [showNotesSidebar, setShowNotesSidebar] = useState(false);
@@ -142,6 +144,12 @@ export default function App() {
         const pdData = await pdRes.json();
         setProgramDetails(pdData);
       }
+
+      const nsRes = await fetch('http://localhost:5000/api/needed-services', { headers });
+      if (nsRes.ok) {
+        const nsData = await nsRes.json();
+        setNeededServices(nsData);
+      }
     } catch (err) {
       console.warn('API offline. Using offline mock sandbox mode.');
       loadMockData();
@@ -215,6 +223,16 @@ export default function App() {
       { _id: 'mock-pd2', category: 'Music', key: 'Bride Entry Song', value: 'A Thousand Years', side: 'Bride' },
       { _id: 'mock-pd3', category: 'Cake & Dessert', key: 'Wedding Cake Flavour', value: 'Chocolate Fudge Berry', side: 'Shared' }
     ]);
+    setNeededServices([
+      { _id: 'm-s1', name: 'Venue / Auditorium Booking', category: 'Venue', icon: '🏢', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s2', name: 'Makeup & Grooming (Groom)', category: 'Makeup', icon: '🤵', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s3', name: 'Makeup & Bridal Styling (Bride)', category: 'Makeup', icon: '💄', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s4', name: 'Photo & Video Services', category: 'Photography', icon: '📸', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s5', name: 'Event Planner / Decor Decorators', category: 'Decor', icon: '🎪', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s6', name: 'Entertainment & Music / DJ', category: 'Music', icon: '🎵', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s7', name: 'Food Catering Services', category: 'Catering', icon: '🍽️', brideCompleted: false, groomCompleted: false },
+      { _id: 'm-s8', name: 'Vehicle & Transport Logistics', category: 'Others', icon: '🚗', brideCompleted: false, groomCompleted: false }
+    ]);
   };
 
   useEffect(() => {
@@ -232,6 +250,70 @@ export default function App() {
   const handleUpdateVendorStatus = async (vendorId, newStatus) => {
     const original = [...vendors];
     setVendors(vendors.map(v => v._id === vendorId ? { ...v, status: newStatus } : v));
+
+    const vendorToUpdate = vendors.find(v => v._id === vendorId);
+
+    // Automation hook when a vendor becomes "Booked"
+    if (newStatus === 'Booked' && vendorToUpdate) {
+      // 1. Auto-complete matching needed service
+      const matchingService = neededServices.find(s => s.name.toLowerCase() === vendorToUpdate.category.toLowerCase());
+      if (matchingService) {
+        const sideToUpdate = vendorToUpdate.sideVisibility === 'Shared' ? 'Both' : vendorToUpdate.sideVisibility;
+        const servicePayload = {};
+        if (sideToUpdate === 'Bride' || sideToUpdate === 'Both') servicePayload.brideCompleted = true;
+        if (sideToUpdate === 'Groom' || sideToUpdate === 'Both') servicePayload.groomCompleted = true;
+
+        setNeededServices(prev => prev.map(s => s._id === matchingService._id ? { ...s, ...servicePayload } : s));
+
+        if (token !== 'mock-token') {
+          try {
+            await fetch(`http://localhost:5000/api/needed-services/${matchingService._id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify(servicePayload)
+            });
+          } catch (err) {}
+        }
+      }
+
+      // 2. Auto-log an expense for this vendor
+      const pkg = vendorToUpdate.packages && vendorToUpdate.packages[0];
+      if (pkg) {
+        const title = `Booked Vendor: ${vendorToUpdate.vendorName} (${pkg.packageName})`;
+        const amount = pkg.totalCost || 0;
+        const category = vendorToUpdate.category;
+        const paidBy = vendorToUpdate.sideVisibility;
+
+        const expensePayload = {
+          title,
+          amount,
+          category,
+          paidBy,
+          isPaid: true,
+          paidDate: new Date(),
+          paymentMode: 'Bank Transfer',
+          balanceRemarks: 'Auto-logged from Vendor Booking'
+        };
+
+        const fallbackExp = { _id: Date.now().toString(), ...expensePayload };
+        setExpenses(prev => [...prev, fallbackExp]);
+
+        if (token !== 'mock-token') {
+          try {
+            const expRes = await fetch('http://localhost:5000/api/expenses', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify(expensePayload)
+            });
+            if (expRes.ok) {
+              const savedExp = await expRes.json();
+              setExpenses(prev => prev.map(e => e._id === fallbackExp._id ? savedExp : e));
+            }
+          } catch (err) {}
+        }
+      }
+    }
+
     if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/vendors/${vendorId}`, {
@@ -245,6 +327,112 @@ export default function App() {
       if (!res.ok) setVendors(original);
     } catch (err) {
       setVendors(original);
+    }
+  };
+
+  const handleLogVendorExpense = async (vendor) => {
+    const pkg = vendor.packages && vendor.packages[0];
+    const amount = pkg ? pkg.totalCost : 0;
+    const title = `Logged Expense: ${vendor.vendorName} (${pkg ? pkg.packageName : 'General Package'})`;
+    const category = vendor.category;
+    const paidBy = vendor.sideVisibility;
+
+    const payload = {
+      title,
+      amount,
+      category,
+      paidBy,
+      isPaid: true,
+      paidDate: new Date(),
+      paymentMode: 'Bank Transfer',
+      balanceRemarks: 'Logged from Vendor Card interface'
+    };
+
+    const fallback = { _id: Date.now().toString(), ...payload };
+    setExpenses(prev => [...prev, fallback]);
+
+    if (token === 'mock-token') return;
+    try {
+      const res = await fetch('http://localhost:5000/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setExpenses(prev => prev.map(e => e._id === fallback._id ? saved : e));
+      }
+    } catch (err) {}
+  };
+
+  const handleToggleService = async (serviceId, checked, sideToUpdate) => {
+    const isBride = sideToUpdate === 'Bride';
+    const updatePayload = isBride ? { brideCompleted: checked } : { groomCompleted: checked };
+    
+    const original = [...neededServices];
+    setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, ...updatePayload } : s));
+    
+    if (token === 'mock-token') return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(updatePayload)
+      });
+      if (!res.ok) setNeededServices(original);
+    } catch (err) {
+      setNeededServices(original);
+    }
+  };
+
+  const handleAddNeededService = async (name, category, icon) => {
+    const fallback = { _id: Date.now().toString(), name, category, icon: icon || '🏢', brideCompleted: false, groomCompleted: false };
+    setNeededServices([...neededServices, fallback]);
+    
+    if (token === 'mock-token') return;
+    try {
+      const res = await fetch('http://localhost:5000/api/needed-services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name, category, icon })
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setNeededServices(prev => prev.map(s => s._id === fallback._id ? saved : s));
+      }
+    } catch (err) {}
+  };
+
+  const handleUpdateNeededService = async (serviceId, name, category, icon) => {
+    const original = [...neededServices];
+    setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, name, category, icon } : s));
+    
+    if (token === 'mock-token') return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name, category, icon })
+      });
+      if (!res.ok) setNeededServices(original);
+    } catch (err) {
+      setNeededServices(original);
+    }
+  };
+
+  const handleDeleteNeededService = async (serviceId) => {
+    const original = [...neededServices];
+    setNeededServices(neededServices.filter(s => s._id !== serviceId));
+    
+    if (token === 'mock-token') return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) setNeededServices(original);
+    } catch (err) {
+      setNeededServices(original);
     }
   };
 
@@ -555,7 +743,7 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80 shadow-sm shrink-0">
         
         {/* Row 1: Brand details, segmented Workspace Pill Switcher, and profile tools */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="w-full px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -648,7 +836,7 @@ export default function App() {
 
         {/* Row 2: Desktop Tabs Menu (Dedicate a separate line to tabs, preventing clumping) */}
         <div className="hidden md:block border-t border-slate-100 bg-slate-50/50">
-          <div className="max-w-7xl mx-auto px-8 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <div className="w-full px-4 md:px-8 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'hub', label: 'Wedding Hub', icon: Heart },
               { id: 'inbox', label: 'AI Quote Inbox', icon: Sparkles },
@@ -687,7 +875,7 @@ export default function App() {
 
       {/* 2. Main Viewport Container */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           {activeSide === 'Shared' && user?.role !== 'Planner' && (wedding?.brideAllowsMutual === false || wedding?.groomAllowsMutual === false) ? (
             <div className="max-w-md mx-auto my-16 bg-white border border-slate-100 rounded-3xl p-8 text-center space-y-4 shadow-xl">
               <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto text-rose-500">
@@ -707,12 +895,21 @@ export default function App() {
                 <WeddingHub
                   wedding={wedding}
                   vendors={vendors}
+                  neededServices={neededServices}
                   token={token}
                   side={activeSide}
                   user={user}
                   timelineEvents={timelineEvents}
                   onUpdateWedding={(updated) => setWedding(updated)}
                   onUpdateTimeline={loadData}
+                  onToggleService={handleToggleService}
+                  onAddService={handleAddNeededService}
+                  onUpdateService={handleUpdateNeededService}
+                  onDeleteService={handleDeleteNeededService}
+                  onNavigateToTab={(tabName, catFilter) => {
+                    setActiveTab(tabName);
+                    if (catFilter) setCategoryFilter(catFilter);
+                  }}
                 />
               )}
 
@@ -721,8 +918,12 @@ export default function App() {
                   token={token}
                   side={activeSide}
                   vendors={vendors}
+                  neededServices={neededServices}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
                   onVendorCreated={(newVendor) => setVendors([...vendors, newVendor])}
                   onUpdateVendorStatus={handleUpdateVendorStatus}
+                  onLogVendorExpense={handleLogVendorExpense}
                 />
               )}
               
@@ -749,6 +950,7 @@ export default function App() {
                   side={activeSide}
                   user={user}
                   wedding={wedding}
+                  neededServices={neededServices}
                   onUpdateWedding={(updated) => setWedding(updated)}
                   onExpenseAdded={handleExpenseAdded}
                   onExpenseUpdated={handleExpenseUpdated}

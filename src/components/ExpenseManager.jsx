@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { DollarSign, Landmark, Plus, Trash2, Check, AlertCircle, Eye, EyeOff, Users, ArrowRight, Lock, Save } from 'lucide-react';
 
-export default function ExpenseManager({ expenses, token, side, user, wedding, onUpdateWedding, onExpenseAdded, onExpenseUpdated, onExpenseDeleted, totalBudget }) {
+export default function ExpenseManager({ expenses, token, side, user, wedding, onUpdateWedding, onExpenseAdded, onExpenseUpdated, onExpenseDeleted, totalBudget, neededServices = [] }) {
+  const categories = neededServices.length > 0 
+    ? neededServices.map(s => s.name)
+    : ['Venue / Auditorium Booking', 'Makeup & Grooming (Groom)', 'Makeup & Bridal Styling (Bride)', 'Photo & Video Services', 'Event Planner / Decor Decorators', 'Entertainment & Music / DJ', 'Food Catering Services', 'Vehicle & Transport Logistics'];
+
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Catering');
+  const [category, setCategory] = useState(categories[0] || 'Venue / Auditorium Booking');
   
   // Default to the active side
   const [paidBy, setPaidBy] = useState(side === 'Shared' ? 'Shared' : side); 
@@ -25,8 +29,6 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   React.useEffect(() => {
     setPaidBy(side === 'Shared' ? 'Shared' : side);
   }, [side]);
-
-  const categories = ['Venue', 'Catering', 'Photography', 'Decor', 'Music', 'Makeup', 'Attire', 'Invitations', 'Others'];
 
   // Parse custom metadata encoded inside expense titles:
   // Format: "Title Text##split:groomShare:brideShare:advancePaid:advancePayer"

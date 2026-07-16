@@ -26,6 +26,60 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   const [balanceRemarks, setBalanceRemarks] = useState('');
   const [selectedNeededServiceId, setSelectedNeededServiceId] = useState('');
 
+  const [editingExpense, setEditingExpense] = useState(null);
+  
+  // Edit sub-form states
+  const [editTitle, setEditTitle] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editNeededServiceId, setEditNeededServiceId] = useState('');
+  const [editPaidBy, setEditPaidBy] = useState('Shared');
+  const [editIsPaid, setEditIsPaid] = useState(false);
+  const [editAdvancePaid, setEditAdvancePaid] = useState('');
+  const [editPaymentMode, setEditPaymentMode] = useState('Cash');
+  const [editPaidDate, setEditPaidDate] = useState('');
+  const [editBalanceDueDate, setEditBalanceDueDate] = useState('');
+  const [editBalanceRemarks, setEditBalanceRemarks] = useState('');
+  const [editGroomSplit, setEditGroomSplit] = useState('');
+  const [editBrideSplit, setEditBrideSplit] = useState('');
+  const [editAdvancePayer, setEditAdvancePayer] = useState('Groom');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Edit sub-form installments list states
+  const [editInstallments, setEditInstallments] = useState([]);
+  const [newInstAmount, setNewInstAmount] = useState('');
+  const [newInstDate, setNewInstDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newInstMode, setNewInstMode] = useState('Cash');
+  const [newInstRemarks, setNewInstRemarks] = useState('');
+
+  React.useEffect(() => {
+    if (editingExpense) {
+      const parsed = parseExpense(editingExpense);
+      setEditTitle(parsed.cleanTitle);
+      setEditAmount(parsed.amount);
+      setEditCategory(parsed.category);
+      setEditNeededServiceId(parsed.neededServiceId || '');
+      setEditPaidBy(parsed.paidBy);
+      setEditIsPaid(parsed.isPaid || false);
+      setEditAdvancePaid(parsed.advancePaid || '');
+      setEditPaymentMode(parsed.paymentMode || 'Cash');
+      setEditPaidDate(parsed.paidDate ? new Date(parsed.paidDate).toISOString().split('T')[0] : '');
+      setEditBalanceDueDate(parsed.balanceDueDate ? new Date(parsed.balanceDueDate).toISOString().split('T')[0] : '');
+      setEditBalanceRemarks(parsed.balanceRemarks || '');
+      setEditInstallments(parsed.installments || []);
+      
+      if (parsed.isSharedSplit) {
+        setEditGroomSplit(parsed.groomShare);
+        setEditBrideSplit(parsed.brideShare);
+        setEditAdvancePayer(parsed.advancePayer || 'Groom');
+      } else {
+        setEditGroomSplit('');
+        setEditBrideSplit('');
+        setEditAdvancePayer('Groom');
+      }
+    }
+  }, [editingExpense]);
+
   // Sync state if workspace side switches
   React.useEffect(() => {
     setPaidBy(side === 'Shared' ? 'Shared' : side);
@@ -34,29 +88,61 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   // Parse custom metadata encoded inside expense titles:
   // Format: "Title Text##split:groomShare:brideShare:advancePaid:advancePayer"
   const parseExpense = (exp) => {
-    if (!exp.title) return { ...exp, cleanTitle: '', isSharedSplit: false };
-    const parts = exp.title.split('##split:');
-    if (parts.length < 2) {
-      return { 
-        ...exp, 
-        cleanTitle: exp.title, 
-        isSharedSplit: false,
-        groomShare: exp.paidBy === 'Groom' ? exp.amount : 0,
-        brideShare: exp.paidBy === 'Bride' ? exp.amount : 0,
-        advancePaid: exp.advancePaid !== undefined ? exp.advancePaid : (exp.isPaid ? exp.amount : 0),
-        advancePayer: exp.paidBy
-      };
+    let rawInstallments = exp.installments || [];
+    let cleanTitle = '';
+    let isSharedSplit = false;
+    let groomShare = 0;
+    let brideShare = 0;
+    let advancePaid = 0;
+    let advancePayer = 'Groom';
+
+    if (exp.title) {
+      const parts = exp.title.split('##split:');
+      if (parts.length < 2) {
+        cleanTitle = exp.title;
+        groomShare = exp.paidBy === 'Groom' ? exp.amount : 0;
+        brideShare = exp.paidBy === 'Bride' ? exp.amount : 0;
+        advancePaid = exp.advancePaid !== undefined ? exp.advancePaid : (exp.isPaid ? exp.amount : 0);
+        advancePayer = exp.paidBy;
+      } else {
+        const [titleText, meta] = parts;
+        cleanTitle = titleText;
+        isSharedSplit = true;
+        const [gShare, bShare, adv, advPayer] = meta.split(':');
+        groomShare = parseFloat(gShare) || 0;
+        brideShare = parseFloat(bShare) || 0;
+        advancePaid = parseFloat(adv) || 0;
+        advancePayer = advPayer || 'Groom';
+      }
     }
-    const [cleanTitle, meta] = parts;
-    const [gShare, bShare, adv, advPayer] = meta.split(':');
+
+    // Sum installments if present, otherwise fall back to advancePaid
+    let totalPaid = 0;
+    let installments = [...rawInstallments];
+    if (installments.length > 0) {
+      totalPaid = installments.reduce((sum, inst) => sum + inst.amount, 0);
+    } else {
+      totalPaid = advancePaid || 0;
+      if (totalPaid > 0) {
+        installments = [{
+          _id: 'default-inst',
+          amount: totalPaid,
+          date: exp.paidDate || exp.createdAt || new Date(),
+          paymentMode: exp.paymentMode || 'Cash',
+          remarks: exp.balanceRemarks || 'Initial payment'
+        }];
+      }
+    }
+
     return {
       ...exp,
       cleanTitle,
-      isSharedSplit: true,
-      groomShare: parseFloat(gShare) || 0,
-      brideShare: parseFloat(bShare) || 0,
-      advancePaid: parseFloat(adv) || 0,
-      advancePayer: advPayer || 'Groom'
+      isSharedSplit,
+      groomShare,
+      brideShare,
+      advancePaid: totalPaid, // Overwrite with true total paid from installments
+      advancePayer,
+      installments
     };
   };
 
@@ -120,6 +206,10 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
     if (!canEditCurrentSide) return;
     if (!title.trim() || !amount) {
       setMessage({ type: 'error', text: 'Expense title and amount are required.' });
+      return;
+    }
+    if (parseFloat(advancePaid) > parseFloat(amount)) {
+      setMessage({ type: 'error', text: 'Advance paid cannot exceed the total cost.' });
       return;
     }
 
@@ -230,6 +320,116 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
     }
   };
 
+  const handleSaveEditExpense = async (e) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editAmount) {
+      alert('Expense title and amount are required.');
+      return;
+    }
+    if (parseFloat(editAdvancePaid) > parseFloat(editAmount)) {
+      alert('Advance paid cannot exceed the total cost.');
+      return;
+    }
+    setEditSubmitting(true);
+
+    let finalTitle = editTitle.trim();
+    if (editPaidBy === 'Shared') {
+      const gSplit = parseFloat(editGroomSplit) || 0;
+      const bSplit = parseFloat(editBrideSplit) || 0;
+      const adv = parseFloat(editAdvancePaid) || 0;
+      finalTitle = `${finalTitle}##split:${gSplit}:${bSplit}:${adv}:${editAdvancePayer}`;
+    }
+
+    const totalPaid = editInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+
+    const payload = {
+      title: finalTitle,
+      amount: parseFloat(editAmount),
+      category: editCategory,
+      paidBy: editPaidBy,
+      isPaid: totalPaid >= parseFloat(editAmount),
+      advancePaid: totalPaid,
+      paymentMode: editPaymentMode,
+      paidDate: editPaidDate || undefined,
+      balanceDueDate: editBalanceDueDate || undefined,
+      balanceRemarks: editBalanceRemarks,
+      neededServiceId: editNeededServiceId || undefined,
+      installments: editInstallments
+    };
+
+    if (token !== 'mock-token') {
+      try {
+        const res = await fetch(`http://localhost:5000/api/expenses/${editingExpense._id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          onExpenseUpdated(updated);
+        }
+      } catch (err) {}
+    } else {
+      onExpenseUpdated({ _id: editingExpense._id, ...payload });
+    }
+
+    setEditSubmitting(false);
+    setEditingExpense(null);
+  };
+
+  const handleAddInstallmentToEdit = () => {
+    const amt = parseFloat(newInstAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    
+    const totalExisting = editInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+    const newTotal = totalExisting + amt;
+    if (newTotal > parseFloat(editAmount)) {
+      alert("Total payments cannot exceed the total cost of the service!");
+      return;
+    }
+
+    const newInst = {
+      _id: Date.now().toString(),
+      amount: amt,
+      date: newInstDate || new Date().toISOString().split('T')[0],
+      paymentMode: newInstMode,
+      remarks: newInstRemarks || 'Installment'
+    };
+
+    setEditInstallments([...editInstallments, newInst]);
+    setNewInstAmount('');
+    setNewInstRemarks('');
+  };
+
+  const handleDeleteInstallmentFromEdit = (idx) => {
+    setEditInstallments(editInstallments.filter((_, i) => i !== idx));
+  };
+
+  // Calculate service breakdown stats
+  const serviceStats = neededServices.map(srv => {
+    // Find all expenses linked to this service
+    const linkedExpenses = expenses.filter(e => e.neededServiceId === srv._id).map(e => parseExpense(e));
+    const totalCost = linkedExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalPaid = linkedExpenses.reduce((sum, e) => sum + (e.advancePaid || 0), 0);
+    const totalBalance = totalCost - totalPaid;
+    return {
+      _id: srv._id,
+      name: srv.name,
+      icon: srv.icon,
+      totalCost,
+      totalPaid,
+      totalBalance,
+      expensesCount: linkedExpenses.length
+    };
+  }).filter(stat => stat.totalCost > 0); // Only show services with recorded expenses
+
+  const grandTotalCost = serviceStats.reduce((sum, s) => sum + s.totalCost, 0);
+  const grandTotalPaid = serviceStats.reduce((sum, s) => sum + s.totalPaid, 0);
+  const editTotalPaid = editInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+
   return (
     <div className="space-y-6 text-slate-850">
       
@@ -262,6 +462,119 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
           </div>
         </div>
       </div>
+
+      {/* 2. Visual Service Analytics breakdown */}
+      {serviceStats.length > 0 && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <h4 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest mb-4">Service Budget & Payments Visualizer</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+            
+            {/* Donut Chart Display */}
+            <div className="flex flex-col items-center justify-center border-r border-slate-100/80 pr-6">
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                  <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f3f4f6" strokeWidth="3" />
+                  {(() => {
+                    let accumulatedPercent = 0;
+                    const colors = [
+                      '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
+                      '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
+                    ];
+                    return serviceStats.map((stat, idx) => {
+                      const percent = grandTotalCost > 0 ? (stat.totalCost / grandTotalCost) * 100 : 0;
+                      const strokeDasharray = `${percent} ${100 - percent}`;
+                      const strokeDashoffset = 100 - accumulatedPercent;
+                      accumulatedPercent += percent;
+                      const color = colors[idx % colors.length];
+                      
+                      return (
+                        <circle
+                          key={stat._id}
+                          cx="18"
+                          cy="18"
+                          r="15.915"
+                          fill="transparent"
+                          stroke={color}
+                          strokeWidth="3.2"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          className="transition-all duration-300 hover:stroke-[4]"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                
+                <div className="absolute flex flex-col items-center text-center">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Paid Share</span>
+                  <span className="text-sm font-black text-slate-800">
+                    {grandTotalCost > 0 ? Math.round((grandTotalPaid / grandTotalCost) * 100) : 0}%
+                  </span>
+                  <span className="text-[9px] text-slate-450 font-bold uppercase mt-0.5">₹{grandTotalPaid.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {serviceStats.map((stat, idx) => {
+                  const colors = [
+                    '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
+                    '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
+                  ];
+                  const color = colors[idx % colors.length];
+                  return (
+                    <div key={stat._id} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></span>
+                      <span>{stat.icon} {stat.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Service Breakdown details lists */}
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {serviceStats.map((stat, idx) => {
+                const colors = [
+                  '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
+                  '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
+                ];
+                const color = colors[idx % colors.length];
+                const payPercent = stat.totalCost > 0 ? Math.round((stat.totalPaid / stat.totalCost) * 100) : 0;
+                
+                return (
+                  <div key={stat._id} className="p-3.5 border border-slate-100/80 rounded-2xl bg-slate-50/30 flex flex-col justify-between gap-1.5">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{stat.icon}</span>
+                        <div>
+                          <span className="font-extrabold text-[11px] text-slate-700 block truncate max-w-[120px]">{stat.name}</span>
+                          <span className="text-[9px] text-slate-450 font-bold uppercase">{stat.expensesCount} records</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-xs text-slate-800 block">₹{stat.totalCost.toLocaleString()}</span>
+                        <span className="text-[9px] text-slate-400 font-bold block">Paid: ₹{stat.totalPaid.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 mt-1">
+                      <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
+                        <span>Paid progress</span>
+                        <span style={{ color }}>{payPercent}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${payPercent}%`, backgroundColor: color }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* 2. Grid split layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -574,9 +887,14 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                         </td>
                         <td className="p-3 text-center">
                           {canManageSharedLedger ? (
-                            <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex justify-center items-center gap-1.5">
+                              <button onClick={() => setEditingExpense(e)} className="text-slate-400 hover:text-indigo-650 transition-colors p-1 rounded" title="Edit Expense">
+                                <span className="text-xs select-none">✏️</span>
+                              </button>
+                              <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded" title="Delete Expense">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           ) : (
                             <Lock className="w-3.5 h-3.5 text-slate-350 mx-auto" />
                           )}
@@ -628,9 +946,14 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                           <div className="flex items-center gap-1.5">
                             <span className="font-black text-xs text-slate-800">₹{e.amount.toLocaleString()}</span>
                             {canManageGroomLedger ? (
-                              <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 p-0.5 transition-colors shrink-0">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setEditingExpense(e)} className="text-slate-400 hover:text-indigo-655 p-0.5 transition-colors shrink-0" title="Edit Expense">
+                                  <span className="text-[10px] select-none">✏️</span>
+                                </button>
+                                <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 p-0.5 transition-colors shrink-0" title="Delete Expense">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             ) : (
                               <Lock className="w-3.5 h-3.5 text-slate-350 shrink-0" />
                             )}
@@ -700,9 +1023,14 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                           <div className="flex items-center gap-1.5">
                             <span className="font-black text-xs text-slate-800">₹{e.amount.toLocaleString()}</span>
                             {canManageBrideLedger ? (
-                              <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 p-0.5 transition-colors shrink-0">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setEditingExpense(e)} className="text-slate-400 hover:text-indigo-655 p-0.5 transition-colors shrink-0" title="Edit Expense">
+                                  <span className="text-[10px] select-none">✏️</span>
+                                </button>
+                                <button onClick={() => handleDelete(e._id)} className="text-slate-400 hover:text-rose-600 p-0.5 transition-colors shrink-0" title="Delete Expense">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             ) : (
                               <Lock className="w-3.5 h-3.5 text-slate-350 shrink-0" />
                             )}
@@ -746,6 +1074,258 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
 
       </div>
 
+      {/* Edit Expense Popup Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setEditingExpense(null)} 
+              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100 flex items-center gap-1.5">
+                ✏️ Edit Expense Record
+              </h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">
+                Modify recorded expense ledger item.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEditExpense} className="space-y-4 text-slate-850">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expense Title</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Needed Service (Optional)</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-705 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                  value={editNeededServiceId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditNeededServiceId(val);
+                    const linked = neededServices.find(s => s._id === val);
+                    if (linked) {
+                      setEditCategory(linked.name);
+                    }
+                  }}
+                >
+                  <option value="">None / General Expense</option>
+                  {neededServices.map(srv => (
+                    <option key={srv._id} value={srv._id}>{srv.icon} {srv.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Cost (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                  <select
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-705"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payer Pool</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-705"
+                  value={editPaidBy}
+                  onChange={(e) => setEditPaidBy(e.target.value)}
+                >
+                  <option value="Shared">Shared / Common Split Cost</option>
+                  <option value="Groom">Groom Personal Ledger (Private)</option>
+                  <option value="Bride">Bride Personal Ledger (Private)</option>
+                </select>
+              </div>
+
+              {editPaidBy === 'Shared' && (
+                <div className="p-4 border border-indigo-100 rounded-2xl bg-indigo-50/20 space-y-3">
+                  <span className="text-[9px] font-bold text-indigo-650 uppercase tracking-wider block">Common Event Cost Split</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Groom Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={editGroomSplit}
+                        onChange={(e) => setEditGroomSplit(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Bride Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={editBrideSplit}
+                        onChange={(e) => setEditBrideSplit(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50 space-y-3">
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block border-b border-slate-200 pb-1.5 flex justify-between items-center">
+                  <span>💰 Installments Ledger</span>
+                  <span className="bg-indigo-50 border border-indigo-150 text-indigo-700 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                    Paid: ₹{editTotalPaid.toLocaleString()}
+                  </span>
+                </span>
+
+                {/* List of current installments */}
+                <div className="space-y-2">
+                  {editInstallments.length > 0 ? (
+                    editInstallments.map((inst, index) => (
+                      <div key={inst._id || index} className="p-2.5 bg-white border border-slate-100 rounded-xl flex justify-between items-center gap-3">
+                        <div className="truncate">
+                          <span className="font-extrabold text-[11px] text-slate-800 block">₹{inst.amount.toLocaleString()} <span className="text-[8px] text-indigo-600 font-bold uppercase">&bull; {inst.paymentMode}</span></span>
+                          <span className="text-[9px] text-slate-400 font-semibold uppercase">{inst.remarks} &bull; {new Date(inst.date).toLocaleDateString()}</span>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => handleDeleteInstallmentFromEdit(index)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-slate-400 text-[10px] italic">No installment payments recorded yet.</div>
+                  )}
+                </div>
+
+                {/* Add new installment section */}
+                <div className="pt-2 border-t border-slate-200 space-y-2.5">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Add New Installment</span>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[8px] font-bold text-slate-400 uppercase">Amount (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                        placeholder="₹1000"
+                        value={newInstAmount}
+                        onChange={(e) => setNewInstAmount(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-bold text-slate-400 uppercase">Payment Mode</label>
+                      <select
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold focus:outline-none"
+                        value={newInstMode}
+                        onChange={(e) => setNewInstMode(e.target.value)}
+                      >
+                        <option value="Cash">💵 Cash</option>
+                        <option value="Card">💳 Card</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                        <option value="UPI">📱 UPI</option>
+                        <option value="Others">⚙️ Others</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[8px] font-bold text-slate-400 uppercase">Payment Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                        value={newInstDate}
+                        onChange={(e) => setNewInstDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-bold text-slate-400 uppercase">Remarks</label>
+                      <input
+                        type="text"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                        placeholder="e.g. Stage deposit"
+                        value={newInstRemarks}
+                        onChange={(e) => setNewInstRemarks(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddInstallmentToEdit}
+                    className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all"
+                  >
+                    ➕ Add Installment Payment
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-400 font-bold uppercase pt-1.5 border-t border-slate-200 flex justify-between">
+                  <span>Remaining Balance:</span>
+                  <span className="text-slate-800 font-extrabold">₹{(parseFloat(editAmount) || 0) - editTotalPaid}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center pt-1">
+                <input
+                  type="checkbox"
+                  id="editIsPaidCheckbox"
+                  className="rounded text-indigo-650 mr-2"
+                  checked={editTotalPaid >= parseFloat(editAmount) && parseFloat(editAmount) > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const bal = (parseFloat(editAmount) || 0) - editTotalPaid;
+                      if (bal > 0) {
+                        setEditInstallments([...editInstallments, {
+                          _id: Date.now().toString(),
+                          amount: bal,
+                          date: new Date().toISOString().split('T')[0],
+                          paymentMode: 'Bank Transfer',
+                          remarks: 'Final Balance Settlement'
+                        }]);
+                      }
+                    }
+                  }}
+                />
+                <label htmlFor="editIsPaidCheckbox" className="text-xs text-slate-500 font-bold select-none cursor-pointer">Mark paid fully (Settle Balance)</label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={editSubmitting}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+              >
+                ✏️ {editSubmitting ? 'Saving...' : 'Update Expense Record'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

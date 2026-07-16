@@ -331,25 +331,27 @@ export default function App() {
     }
   };
 
-  const handleLogVendorExpense = async (vendor) => {
-    const pkg = vendor.packages && vendor.packages[0];
-    const amount = pkg ? pkg.totalCost : 0;
-    const title = `Logged Expense: ${vendor.vendorName} (${pkg ? pkg.packageName : 'General Package'})`;
-    const category = vendor.category;
-    const paidBy = vendor.sideVisibility;
-    const matchingService = neededServices.find(s => s.category.toLowerCase() === vendor.category.toLowerCase());
+  const handleLogVendorExpense = async (vendor, customPayload) => {
+    const payload = customPayload || (() => {
+      const pkg = vendor.packages && vendor.packages[0];
+      const amount = pkg ? pkg.totalCost : 0;
+      const title = `Logged Expense: ${vendor.vendorName} (${pkg ? pkg.packageName : 'General Package'})`;
+      const category = vendor.category;
+      const paidBy = vendor.sideVisibility;
+      const matchingService = neededServices.find(s => s.category.toLowerCase() === vendor.category.toLowerCase());
 
-    const payload = {
-      title,
-      amount,
-      category,
-      paidBy,
-      isPaid: true,
-      paidDate: new Date(),
-      paymentMode: 'Bank Transfer',
-      balanceRemarks: 'Logged from Vendor Card interface',
-      neededServiceId: matchingService ? matchingService._id : undefined
-    };
+      return {
+        title,
+        amount,
+        category,
+        paidBy,
+        isPaid: true,
+        paidDate: new Date(),
+        paymentMode: 'Bank Transfer',
+        balanceRemarks: 'Logged from Vendor Card interface',
+        neededServiceId: matchingService ? matchingService._id : undefined
+      };
+    })();
 
     const fallback = { _id: Date.now().toString(), ...payload };
     setExpenses(prev => [...prev, fallback]);
@@ -922,11 +924,13 @@ export default function App() {
                   side={activeSide}
                   vendors={vendors}
                   neededServices={neededServices}
+                  expenses={expenses}
                   categoryFilter={categoryFilter}
                   setCategoryFilter={setCategoryFilter}
                   onVendorCreated={(newVendor) => setVendors([...vendors, newVendor])}
                   onUpdateVendorStatus={handleUpdateVendorStatus}
                   onLogVendorExpense={handleLogVendorExpense}
+                  onExpenseDeleted={handleExpenseDeleted}
                 />
               )}
               

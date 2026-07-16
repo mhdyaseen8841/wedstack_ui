@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Sparkles, Save, FileText, CheckCircle2, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Sparkles, Save, FileText, CheckCircle2, ChevronRight, Plus, Trash2, Check, Lock, Landmark, Users } from 'lucide-react';
 
-export default function FastCaptureInbox({ token, side, onVendorCreated, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter }) {
-  const categories = neededServices.length > 0 
+export default function FastCaptureInbox({ token, side, onVendorCreated, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter, onLogVendorExpense, expenses = [], onExpenseDeleted }) {
+  const categories = neededServices.length > 0
     ? neededServices.map(s => s.name)
     : ['Venue / Auditorium Booking', 'Makeup & Grooming (Groom)', 'Makeup & Bridal Styling (Bride)', 'Photo & Video Services', 'Event Planner / Decor Decorators', 'Entertainment & Music / DJ', 'Food Catering Services', 'Vehicle & Transport Logistics'];
 
@@ -15,12 +15,124 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
   const [sideVisibility, setSideVisibility] = useState(side === 'Shared' ? 'Shared' : side);
   const [allowCrossView, setAllowCrossView] = useState(false);
   const [message, setMessage] = useState(null);
+  const [expenseModalVendor, setExpenseModalVendor] = useState(null);
+  const [cancelModalVendor, setCancelModalVendor] = useState(null);
+
+  // Expense popup form states
+  const [expenseTitle, setExpenseTitle] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('');
+  const [expenseNeededServiceId, setExpenseNeededServiceId] = useState('');
+  const [expensePaidBy, setExpensePaidBy] = useState('Shared');
+  const [expenseIsPaid, setExpenseIsPaid] = useState(false);
+  const [expenseAdvancePaid, setExpenseAdvancePaid] = useState('');
+  const [expensePaymentMode, setExpensePaymentMode] = useState('Cash');
+  const [expensePaidDate, setExpensePaidDate] = useState('');
+  const [expenseBalanceDueDate, setExpenseBalanceDueDate] = useState('');
+  const [expenseBalanceRemarks, setExpenseBalanceRemarks] = useState('');
+  const [expenseGroomSplit, setExpenseGroomSplit] = useState('');
+  const [expenseBrideSplit, setExpenseBrideSplit] = useState('');
+  const [expenseAdvancePayer, setExpenseAdvancePayer] = useState('Groom');
+  const [expenseSubmitting, setExpenseSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    if (expenseModalVendor) {
+      const pkg = expenseModalVendor.packages && expenseModalVendor.packages[0];
+      setExpenseTitle(`Booked Vendor: ${expenseModalVendor.vendorName} (${pkg ? pkg.packageName : 'General Package'})`);
+      setExpenseAmount(pkg ? pkg.totalCost || 0 : 0);
+      setExpenseCategory(expenseModalVendor.category);
+      setExpensePaidBy(expenseModalVendor.sideVisibility || (side === 'Shared' ? 'Shared' : side));
+      setExpenseIsPaid(true);
+      setExpenseAdvancePaid(pkg ? pkg.totalCost || 0 : 0);
+
+      const matchingService = neededServices.find(s => s.category.toLowerCase() === expenseModalVendor.category.toLowerCase());
+      if (matchingService) {
+        setExpenseNeededServiceId(matchingService._id);
+        setExpenseCategory(matchingService.name);
+      } else {
+        setExpenseNeededServiceId('');
+      }
+      setExpensePaymentMode('Bank Transfer');
+      setExpenseBalanceRemarks('Logged from Vendor Booking');
+      setExpensePaidDate(new Date().toISOString().split('T')[0]);
+      setExpenseBalanceDueDate('');
+    }
+  }, [expenseModalVendor, neededServices, side]);
 
   React.useEffect(() => {
     if (categoryFilter) {
       setCategory(categoryFilter);
     }
   }, [categoryFilter]);
+
+  const handleSaveExpenseFromModal = async (e) => {
+    e.preventDefault();
+    if (parseFloat(expenseAdvancePaid) > parseFloat(expenseAmount)) {
+      alert("Advance paid cannot exceed the total cost!");
+      return;
+    }
+    setExpenseSubmitting(true);
+
+    let finalTitle = expenseTitle.trim();
+    if (expensePaidBy === 'Shared') {
+      const gSplit = parseFloat(expenseGroomSplit) || 0;
+      const bSplit = parseFloat(expenseBrideSplit) || 0;
+      const adv = parseFloat(expenseAdvancePaid) || 0;
+      finalTitle = `${finalTitle}##split:${gSplit}:${bSplit}:${adv}:${expenseAdvancePayer}`;
+    }
+
+    const payload = {
+      title: finalTitle,
+      amount: parseFloat(expenseAmount) || 0,
+      category: expenseCategory,
+      paidBy: expensePaidBy,
+      isPaid: expenseIsPaid,
+      advancePaid: parseFloat(expenseAdvancePaid) || 0,
+      paymentMode: expensePaymentMode,
+      paidDate: expensePaidDate || undefined,
+      balanceDueDate: expenseBalanceDueDate || undefined,
+      balanceRemarks: expenseBalanceRemarks,
+      neededServiceId: expenseNeededServiceId || undefined
+    };
+
+    if (onLogVendorExpense) {
+      await onLogVendorExpense(expenseModalVendor, payload);
+    }
+    setExpenseSubmitting(false);
+    setExpenseModalVendor(null);
+  };
+
+  const getAssociatedExpenses = (vendor) => {
+    if (!vendor) return [];
+    const matchingService = neededServices.find(s => s.category.toLowerCase() === vendor.category.toLowerCase());
+    return expenses.filter(exp =>
+      (matchingService && exp.neededServiceId === matchingService._id) ||
+      exp.title.includes(vendor.vendorName)
+    );
+  };
+
+  const handleDeleteAssociatedExpense = async (expenseId) => {
+    if (token !== 'mock-token') {
+      try {
+        await fetch(`http://localhost:5000/api/expenses/${expenseId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) { }
+    }
+    if (onExpenseDeleted) onExpenseDeleted(expenseId);
+  };
+
+  const handleCancelBookingAndCleanExpenses = async (vendor) => {
+    const associated = getAssociatedExpenses(vendor);
+    for (const exp of associated) {
+      await handleDeleteAssociatedExpense(exp._id);
+    }
+    if (onUpdateVendorStatus) {
+      await onUpdateVendorStatus(vendor._id, 'Shortlisted');
+    }
+    setCancelModalVendor(null);
+  };
 
   // Handle parsing
   const handleParse = async () => {
@@ -181,10 +293,10 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
             <Sparkles className="w-4 h-4 text-indigo-600" />
             <span>Currently filtering tracking board & category selector to: <span className="underline font-black text-indigo-950">{categoryFilter}</span></span>
           </div>
-          <button 
+          <button
             onClick={() => {
               if (setCategoryFilter) setCategoryFilter(null);
-            }} 
+            }}
             className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-indigo-200 text-indigo-700 rounded-lg transition-colors font-bold uppercase text-[9px] tracking-wider"
           >
             ✕ Clear Filter
@@ -193,7 +305,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       )}
       {/* Inbox Split View Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Left Side: Unstructured Paste */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
           <div>
@@ -238,9 +350,8 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
           </div>
 
           {message && (
-            <div className={`p-3 rounded-xl text-xs font-medium mb-4 ${
-              message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-            }`}>
+            <div className={`p-3 rounded-xl text-xs font-medium mb-4 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+              }`}>
               {message.text}
             </div>
           )}
@@ -471,15 +582,14 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                       <div className="font-bold text-slate-800 text-sm truncate">{vendor.vendorName}</div>
                       <div className="flex justify-between items-center text-xs text-slate-500">
                         <span className="font-semibold text-slate-600">{vendor.category}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          vendor.sideVisibility === 'Bride' ? 'bg-rose-50 text-rose-600' :
-                          vendor.sideVisibility === 'Groom' ? 'bg-sky-50 text-sky-600' :
-                          'bg-indigo-50 text-indigo-600'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${vendor.sideVisibility === 'Bride' ? 'bg-rose-50 text-rose-600' :
+                            vendor.sideVisibility === 'Groom' ? 'bg-sky-50 text-sky-600' :
+                              'bg-indigo-50 text-indigo-600'
+                          }`}>
                           {vendor.sideVisibility}
                         </span>
                       </div>
-                      
+
                       <div className="flex justify-between items-center pt-1.5 gap-2 border-t border-slate-100/50 mt-1.5 flex-wrap">
                         {vendor.packages && vendor.packages.length > 0 ? (
                           <div className="text-[10px] font-black text-slate-700 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg">
@@ -488,23 +598,37 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                         ) : (
                           <span className="text-[9px] text-slate-400 font-semibold italic">No package logged</span>
                         )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onLogVendorExpense) onLogVendorExpense(vendor);
-                          }}
-                          className="text-[9px] font-bold text-indigo-650 hover:text-indigo-800 transition-colors uppercase tracking-wider flex items-center gap-0.5"
-                          title="Record this vendor package cost as a ledger expense item"
-                        >
-                          💸 Log Expense
-                        </button>
+                        {statusCol === 'Booked' && (
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpenseModalVendor(vendor);
+                              }}
+                              className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+                              title="Record this vendor package cost as a ledger expense item"
+                            >
+                              💸 Log Expense
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCancelModalVendor(vendor);
+                              }}
+                              className="text-[9px] font-bold text-rose-600 hover:text-rose-800 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+                              title="Cancel booking and manage associated ledger expenses"
+                            >
+                              🚫 Cancel Booking
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      
+
                       {/* Simple status mover arrows */}
                       <div className="pt-2 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="text-[10px] text-slate-400 font-bold">Move:</span>
                         <div className="flex gap-1">
-                          {boardStatuses.indexOf(statusCol) > 0 && (
+                          {boardStatuses.indexOf(statusCol) > 0 && statusCol !== 'Booked' && (
                             <button
                               onClick={() => onUpdateVendorStatus(vendor._id, boardStatuses[boardStatuses.indexOf(statusCol) - 1])}
                               className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-655 font-bold"
@@ -533,6 +657,289 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
           })}
         </div>
       </div>
+      {/* 4. Record Expense Popup Modal */}
+      {expenseModalVendor && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setExpenseModalVendor(null)}
+              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100 flex items-center gap-1.5">
+                <Landmark className="w-4 h-4 text-indigo-600" /> Record Expense
+              </h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">
+                Log the expense details for booked vendor <strong className="text-slate-700">{expenseModalVendor.vendorName}</strong>.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveExpenseFromModal} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expense Title</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
+                  value={expenseTitle}
+                  onChange={(e) => setExpenseTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Needed Service (Optional)</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                  value={expenseNeededServiceId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setExpenseNeededServiceId(val);
+                    const linked = neededServices.find(s => s._id === val);
+                    if (linked) {
+                      setExpenseCategory(linked.name);
+                    }
+                  }}
+                >
+                  <option value="">None / General Expense</option>
+                  {neededServices.map(srv => (
+                    <option key={srv._id} value={srv._id}>{srv.icon} {srv.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Cost (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                  <select
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
+                    value={expenseCategory}
+                    onChange={(e) => setExpenseCategory(e.target.value)}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payer Pool</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
+                  value={expensePaidBy}
+                  onChange={(e) => setExpensePaidBy(e.target.value)}
+                >
+                  <option value="Shared">Shared / Common Split Cost</option>
+                  <option value="Groom">Groom Personal Ledger (Private)</option>
+                  <option value="Bride">Bride Personal Ledger (Private)</option>
+                </select>
+              </div>
+
+              {expensePaidBy === 'Shared' && (
+                <div className="p-4 border border-indigo-100 rounded-2xl bg-indigo-50/20 space-y-3">
+                  <span className="text-[9px] font-bold text-indigo-650 uppercase tracking-wider block">Common Event Cost Split</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Groom Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={expenseGroomSplit}
+                        onChange={(e) => setExpenseGroomSplit(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Bride Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={expenseBrideSplit}
+                        onChange={(e) => setExpenseBrideSplit(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50 space-y-3">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Bookkeeping & Payment Details</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Advance Paid (₹)</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                      value={expenseAdvancePaid}
+                      onChange={(e) => setExpenseAdvancePaid(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Mode</label>
+                    <select
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold focus:outline-none"
+                      value={expensePaymentMode}
+                      onChange={(e) => setExpensePaymentMode(e.target.value)}
+                    >
+                      <option value="Cash">💵 Cash</option>
+                      <option value="Card">💳 Card</option>
+                      <option value="Bank Transfer">🏦 Bank Transfer</option>
+                      <option value="UPI">📱 UPI</option>
+                      <option value="Others">⚙️ Others</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                      value={expensePaidDate}
+                      onChange={(e) => setExpensePaidDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Due Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                      value={expenseBalanceDueDate}
+                      onChange={(e) => setExpenseBalanceDueDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Remarks</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                    value={expenseBalanceRemarks}
+                    onChange={(e) => setExpenseBalanceRemarks(e.target.value)}
+                  />
+                </div>
+
+                <div className="text-[10px] text-slate-400 font-bold uppercase pt-1 border-t border-slate-200 flex justify-between">
+                  <span>Remaining Balance:</span>
+                  <span className="text-slate-800 font-extrabold">₹{(parseFloat(expenseAmount) || 0) - (parseFloat(expenseAdvancePaid) || 0)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center pt-1">
+                <input
+                  type="checkbox"
+                  id="expenseIsPaidCheckbox"
+                  className="rounded text-indigo-650 mr-2"
+                  checked={expenseIsPaid}
+                  onChange={(e) => {
+                    setExpenseIsPaid(e.target.checked);
+                    if (e.target.checked) {
+                      setExpenseAdvancePaid(expenseAmount);
+                    }
+                  }}
+                />
+                <label htmlFor="expenseIsPaidCheckbox" className="text-xs text-slate-500 font-bold select-none cursor-pointer">Mark paid fully</label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={expenseSubmitting}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> {expenseSubmitting ? 'Logging...' : 'Save Expense Record'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Cancel Booking Dialog Modal */}
+      {cancelModalVendor && (() => {
+        const associated = getAssociatedExpenses(cancelModalVendor);
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+              <button
+                onClick={() => setCancelModalVendor(null)}
+                className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+              >
+                ✕
+              </button>
+
+              <div className="mb-4">
+                <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-150 flex items-center gap-1.5 text-rose-600">
+                  ⚠️ Cancel Booking Details
+                </h3>
+                <p className="text-[10px] text-slate-450 font-semibold mt-1.5 leading-relaxed">
+                  Cancelling the booking for <strong className="text-slate-700">{cancelModalVendor.vendorName}</strong>. Below are all matching logged ledger expenses associated with this vendor booking:
+                </p>
+              </div>
+
+              <div className="space-y-3 my-4">
+                {associated.length > 0 ? (
+                  associated.map(exp => (
+                    <div key={exp._id} className="p-3 border border-slate-200 bg-slate-50/50 rounded-2xl flex justify-between items-center gap-3">
+                      <div className="truncate">
+                        <span className="font-bold text-xs text-slate-800 block truncate">{exp.title}</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">{exp.category} &bull; Paid: ₹{exp.advancePaid || 0} / Total: ₹{exp.amount}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteAssociatedExpense(exp._id)}
+                        className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0"
+                        title="Delete this expense only"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-slate-400 text-xs italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    No logged expenses found for this booking.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                {associated.length > 0 && (
+                  <button
+                    onClick={() => handleCancelBookingAndCleanExpenses(cancelModalVendor)}
+                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete All Associated Expenses & Move to Shortlisted
+                  </button>
+                )}
+
+                <button
+                  onClick={async () => {
+                    if (onUpdateVendorStatus) {
+                      await onUpdateVendorStatus(cancelModalVendor._id, 'Shortlisted');
+                    }
+                    setCancelModalVendor(null);
+                  }}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+                >
+                  Move back to Shortlisted without deleting expenses
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

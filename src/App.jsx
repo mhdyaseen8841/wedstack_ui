@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Heart, Clock, DollarSign, Share2, ClipboardList, Shield, LogOut, User as UserIcon, Lightbulb, Trash2, Plus, Landmark, Music, Copy, Check, Lock } from 'lucide-react';
+import { Sparkles, Heart, Clock, IndianRupee, Share2, ClipboardList, Shield, LogOut, User as UserIcon, Lightbulb, Trash2, Plus, Landmark, Music, Copy, Check, Lock, MoreHorizontal } from 'lucide-react';
 import FastCaptureInbox from './components/FastCaptureInbox';
 import VendorMatrix from './components/VendorMatrix';
 import CollaborativeBudget from './components/CollaborativeBudget';
@@ -46,6 +46,7 @@ export default function App() {
   const [showNotesSidebar, setShowNotesSidebar] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [noteSideSelect, setNoteSideSelect] = useState('Shared');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Workspace Accent State: 'Bride', 'Groom', 'Shared'
   const [activeSide, setActiveSide] = useState('Shared');
@@ -841,7 +842,7 @@ export default function App() {
               { id: 'hub', label: 'Dashboard', icon: Heart },
               { id: 'inbox', label: 'Vendor Manage', icon: Sparkles },
               { id: 'comparison', label: 'VS Comparison Matrix', icon: ClipboardList },
-              { id: 'budget', label: 'Tri-Color Budget', icon: DollarSign },
+              { id: 'budget', label: 'Tri-Color Budget', icon: IndianRupee },
               { id: 'expenses', label: 'Expenses Log', icon: Landmark },
               { id: 'program', label: 'Program details', icon: Music },
               { id: 'timeline', label: 'Execution Timeline', icon: Clock },
@@ -995,11 +996,8 @@ export default function App() {
           { id: 'hub', label: 'Hub', icon: Heart },
           { id: 'inbox', label: 'AI Vendor', icon: Sparkles },
           { id: 'comparison', label: 'Vs Matrix', icon: ClipboardList },
-          { id: 'budget', label: 'Budget', icon: DollarSign },
+          { id: 'budget', label: 'Budget', icon: IndianRupee },
           { id: 'expenses', label: 'Expense', icon: Landmark },
-          { id: 'program', label: 'Details', icon: Music },
-          { id: 'timeline', label: 'Timeline', icon: Clock },
-          { id: 'terminal', label: 'Portal', icon: Share2 }
         ].map(tab => {
           const TabIcon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1013,7 +1011,7 @@ export default function App() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setShowMoreMenu(false); }}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${isActive ? `${activeText} font-extrabold scale-105` : 'text-slate-400 font-semibold'
                 }`}
             >
@@ -1022,6 +1020,69 @@ export default function App() {
             </button>
           );
         })}
+
+        {/* More — groups Details, Timeline, Portal */}
+        <div className="relative flex-1 flex justify-center">
+          {showMoreMenu && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowMoreMenu(false)}
+              />
+              {/* Upward dropdown */}
+              <div className="absolute bottom-full mb-2 right-0 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden min-w-[140px]">
+                {[
+                  { id: 'program', label: 'Programs', icon: Music },
+                  { id: 'timeline', label: 'Timeline', icon: Clock },
+                  { id: 'terminal', label: 'Portal', icon: Share2 },
+                ].map(item => {
+                  const ItemIcon = item.icon;
+                  const isActive = activeTab === item.id;
+                  let activeText = 'text-indigo-600';
+                  if (isActive) {
+                    if (activeSide === 'Bride') activeText = 'text-rose-600';
+                    else if (activeSide === 'Groom') activeText = 'text-sky-600';
+                  }
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setActiveTab(item.id); setShowMoreMenu(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold transition-colors hover:bg-slate-50 ${isActive ? `${activeText} bg-slate-50/80 font-extrabold` : 'text-slate-600'
+                        }`}
+                    >
+                      <ItemIcon className="w-4 h-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* More trigger button */}
+          {(() => {
+            const moreIsActive = ['program', 'timeline', 'terminal'].includes(activeTab);
+            const moreTabLabels = { program: 'More', timeline: 'Timeline', terminal: 'Portal' };
+            let activeText = 'text-indigo-600';
+            if (moreIsActive) {
+              if (activeSide === 'Bride') activeText = 'text-rose-600';
+              else if (activeSide === 'Groom') activeText = 'text-sky-600';
+            }
+            return (
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className={`flex flex-col items-center justify-center gap-1 w-full py-1 transition-all ${moreIsActive || showMoreMenu ? `${activeText} font-extrabold scale-105` : 'text-slate-400 font-semibold'
+                  }`}
+              >
+                <MoreHorizontal className="w-4.5 h-4.5" />
+                <span className="text-[9px] tracking-tight leading-none">
+                  {moreIsActive ? moreTabLabels[activeTab] : 'More'}
+                </span>
+              </button>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Scratchpad Reminders drawer */}

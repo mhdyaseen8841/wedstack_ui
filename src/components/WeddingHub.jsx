@@ -236,6 +236,17 @@ export default function WeddingHub({
 
   const groupedDays = groupEventsByDate();
 
+  const totalServicesCount = neededServices.length;
+  const bookedServicesCount = neededServices.filter(service => {
+    const autoBooked = vendors.some(v => v.category.toLowerCase() === service.category.toLowerCase() && v.status === 'Booked');
+    const brideChecked = service.brideCompleted || false;
+    const groomChecked = service.groomCompleted || false;
+    return autoBooked || (
+      side === 'Bride' ? brideChecked : side === 'Groom' ? groomChecked : (brideChecked && groomChecked)
+    );
+  }).length;
+  const progressPercent = totalServicesCount > 0 ? Math.round((bookedServicesCount / totalServicesCount) * 100) : 0;
+
   return (
     <div className="space-y-8 text-slate-800 antialiased">
       
@@ -651,6 +662,19 @@ export default function WeddingHub({
               </div>
             </div>
 
+            {/* Checklist Progress Bar */}
+            {totalServicesCount > 0 && (
+              <div className="bg-slate-50/50 border border-slate-150 p-4 rounded-2xl mb-2 space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1">📊 Needed Services Booked</span>
+                  <span className="text-indigo-600">{bookedServicesCount} of {totalServicesCount} services booked ({progressPercent}%)</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
+                </div>
+              </div>
+            )}
+
             {/* Inline Dynamic CRUD Service Manager */}
             {showServiceManager && (
               <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-150 space-y-4 shadow-inner">
@@ -840,7 +864,7 @@ export default function WeddingHub({
 
                       {autoBooked && (
                         <span className="text-[8px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5 shrink-0">
-                          <Check className="w-2.5 h-2.5" /> Secured
+                          <Check className="w-2.5 h-2.5" /> Booked
                         </span>
                       )}
                     </div>
@@ -858,7 +882,14 @@ export default function WeddingHub({
                           </div>
                         ) : (
                           <div className="flex items-center justify-between w-full">
-                            <span>Status: {isCompleted ? 'Completed' : 'Pending'}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold text-slate-400">Status:</span>
+                              {isCompleted ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 border border-emerald-250 text-emerald-700 uppercase tracking-wider">✓ Booked</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 border border-amber-200 text-amber-600 uppercase tracking-wider">⚡ Pending</span>
+                              )}
+                            </div>
                             <input
                               type="checkbox"
                               className="rounded text-indigo-655 focus:ring-0 w-4 h-4 cursor-pointer"

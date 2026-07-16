@@ -24,6 +24,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   const [paidDate, setPaidDate] = useState('');
   const [balanceDueDate, setBalanceDueDate] = useState('');
   const [balanceRemarks, setBalanceRemarks] = useState('');
+  const [selectedNeededServiceId, setSelectedNeededServiceId] = useState('');
 
   // Sync state if workspace side switches
   React.useEffect(() => {
@@ -147,7 +148,8 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
           paymentMode,
           paidDate: paidDate || undefined,
           balanceDueDate: balanceDueDate || undefined,
-          balanceRemarks
+          balanceRemarks,
+          neededServiceId: selectedNeededServiceId || undefined
         })
       });
       if (res.ok) {
@@ -155,6 +157,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
         onExpenseAdded(newExpense);
         setTitle('');
         setAmount('');
+        setSelectedNeededServiceId('');
         setGroomSplit('');
         setBrideSplit('');
         setAdvancePaid('');
@@ -288,6 +291,27 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Needed Service (Optional)</label>
+                  <select
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                    value={selectedNeededServiceId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedNeededServiceId(val);
+                      const linked = neededServices.find(s => s._id === val);
+                      if (linked) {
+                        setCategory(linked.name);
+                      }
+                    }}
+                  >
+                    <option value="">None / General Expense</option>
+                    {neededServices.map(srv => (
+                      <option key={srv._id} value={srv._id}>{srv.icon} {srv.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -525,6 +549,17 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                         <td className="p-3">
                           <span className="font-bold text-slate-700 block">{e.cleanTitle}</span>
                           <span className="text-[9px] text-slate-400 font-semibold uppercase">{e.category}</span>
+                          {(() => {
+                            const linkedSrv = neededServices.find(s => s._id === e.neededServiceId);
+                            if (linkedSrv) {
+                              return (
+                                <div className="mt-1.5 flex items-center gap-1 text-[8px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit font-bold">
+                                  <span>🔗 {linkedSrv.icon} {linkedSrv.name}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
                         <td className="p-3 text-slate-600 font-medium">
                           Groom: <span className="font-bold text-slate-700">₹{e.groomShare}</span> | Bride: <span className="font-bold text-slate-700">₹{e.brideShare}</span>
@@ -578,6 +613,17 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                           <div>
                             <div className="font-bold text-xs text-slate-700">{e.cleanTitle}</div>
                             <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{e.category}</div>
+                            {(() => {
+                              const linkedSrv = neededServices.find(s => s._id === e.neededServiceId);
+                              if (linkedSrv) {
+                                return (
+                                  <div className="mt-1 flex items-center gap-1 text-[8px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit font-bold">
+                                    <span>🔗 {linkedSrv.icon} {linkedSrv.name}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-black text-xs text-slate-800">₹{e.amount.toLocaleString()}</span>
@@ -639,6 +685,17 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                           <div>
                             <div className="font-bold text-xs text-slate-700">{e.cleanTitle}</div>
                             <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{e.category}</div>
+                            {(() => {
+                              const linkedSrv = neededServices.find(s => s._id === e.neededServiceId);
+                              if (linkedSrv) {
+                                return (
+                                  <div className="mt-1 flex items-center gap-1 text-[8px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit font-bold">
+                                    <span>🔗 {linkedSrv.icon} {linkedSrv.name}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-black text-xs text-slate-800">₹{e.amount.toLocaleString()}</span>

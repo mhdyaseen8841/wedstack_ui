@@ -292,7 +292,8 @@ export default function App() {
           isPaid: true,
           paidDate: new Date(),
           paymentMode: 'Bank Transfer',
-          balanceRemarks: 'Auto-logged from Vendor Booking'
+          balanceRemarks: 'Auto-logged from Vendor Booking',
+          neededServiceId: matchingService ? matchingService._id : undefined
         };
 
         const fallbackExp = { _id: Date.now().toString(), ...expensePayload };
@@ -336,6 +337,7 @@ export default function App() {
     const title = `Logged Expense: ${vendor.vendorName} (${pkg ? pkg.packageName : 'General Package'})`;
     const category = vendor.category;
     const paidBy = vendor.sideVisibility;
+    const matchingService = neededServices.find(s => s.category.toLowerCase() === vendor.category.toLowerCase());
 
     const payload = {
       title,
@@ -345,7 +347,8 @@ export default function App() {
       isPaid: true,
       paidDate: new Date(),
       paymentMode: 'Bank Transfer',
-      balanceRemarks: 'Logged from Vendor Card interface'
+      balanceRemarks: 'Logged from Vendor Card interface',
+      neededServiceId: matchingService ? matchingService._id : undefined
     };
 
     const fallback = { _id: Date.now().toString(), ...payload };

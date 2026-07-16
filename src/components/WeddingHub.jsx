@@ -248,7 +248,7 @@ export default function WeddingHub({
   const progressPercent = totalServicesCount > 0 ? Math.round((bookedServicesCount / totalServicesCount) * 100) : 0;
 
   return (
-    <div className="space-y-8 text-slate-800 antialiased">
+    <div className="space-y-12 md:space-y-16 text-slate-800 antialiased">
       
       {/* 1. WOW FACTOR COUNTDOWN WIDGET (COMPACT & SPARKLING) */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-900 p-5 text-white shadow-2xl shadow-indigo-950/40 border border-white/10 shrink-0">
@@ -279,9 +279,9 @@ export default function WeddingHub({
           </div>
 
           <div className="space-y-0.5">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-rose-100">
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-rose-100 font-serif-wedding">
               The Grand Union
-            </h2>
+            </h1>
             <p className="text-slate-350 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-none">
               {wedding?.weddingDate 
                 ? `Main Ceremony Day: ${new Date(wedding.weddingDate).toLocaleDateString(undefined, { dateStyle: 'long' })}`
@@ -540,7 +540,7 @@ export default function WeddingHub({
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-widest">Multi-Day Wedding Roadmap</h3>
+                <h2 className="font-extrabold text-base md:text-lg text-slate-850 font-serif-wedding tracking-wide">Multi-Day Wedding Roadmap</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -649,7 +649,7 @@ export default function WeddingHub({
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <ListTodo className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-extrabold text-sm text-slate-850 uppercase tracking-widest">Needed Services Checklist</h3>
+                <h2 className="font-extrabold text-base md:text-lg text-slate-850 font-serif-wedding tracking-wide">Needed Services Checklist</h2>
               </div>
               <div className="flex items-center gap-3">
                 <button

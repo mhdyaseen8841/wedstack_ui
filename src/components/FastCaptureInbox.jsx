@@ -21,6 +21,9 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
   const [expenseModalVendor, setExpenseModalVendor] = useState(null);
   const [cancelModalVendor, setCancelModalVendor] = useState(null);
   const [showParserPanel, setShowParserPanel] = useState(true);
+  const [editVendorModal, setEditVendorModal] = useState(null); // vendor object being edited
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMessage, setEditMessage] = useState(null);
 
   // Expense popup form states
   const [expenseTitle, setExpenseTitle] = useState('');
@@ -161,12 +164,14 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       const data = await res.json();
       if (res.ok && data.packages) {
         setPackages(data.packages);
-        // Autopopulate vendor name if guessed
-        if (rawText.length > 0) {
+        // Use AI-extracted vendor name if returned, otherwise guess from first line
+        if (data.vendorName && data.vendorName.trim()) {
+          setVendorName(data.vendorName.trim().slice(0, 60));
+        } else if (rawText.length > 0) {
           const firstLine = rawText.split('\n')[0].replace(/[^a-zA-Z0-9\s]/g, '').trim();
           setVendorName(firstLine.slice(0, 30) || 'New AI Parsed Vendor');
         }
-        setMessage({ type: 'success', text: 'Quote successfully parsed by WedStack AI!' });
+        setMessage({ type: 'success', text: `Quote parsed: ${data.packages.length} package${data.packages.length !== 1 ? 's' : ''} extracted!` });
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to parse quote.' });
       }
@@ -289,6 +294,52 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Error connecting to database.' });
+    }
+  };
+
+  // Open edit modal — pre-fill all fields
+  const openEditModal = (vendor) => {
+    setEditVendorModal({ ...vendor });
+    setEditMessage(null);
+  };
+
+  // Save edited vendor via PATCH
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editVendorModal) return;
+    setEditSaving(true);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      else { headers['x-mock-side'] = side; headers['x-mock-wedding-id'] = 'mock-wedding-id'; }
+
+      const res = await fetch(`http://localhost:5000/api/vendors/${editVendorModal._id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          vendorName: editVendorModal.vendorName,
+          category: editVendorModal.category,
+          status: editVendorModal.status,
+          sideVisibility: editVendorModal.sideVisibility,
+          allowCrossView: editVendorModal.allowCrossView,
+          contactNumber: editVendorModal.contactNumber || '',
+          instagramUrl: editVendorModal.instagramUrl || '',
+          remarks: editVendorModal.remarks || '',
+          packages: editVendorModal.packages || []
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onVendorCreated(data); // refresh parent list
+        setEditMessage({ type: 'success', text: 'Vendor updated successfully!' });
+        setTimeout(() => setEditVendorModal(null), 900);
+      } else {
+        setEditMessage({ type: 'error', text: data.message || 'Update failed' });
+      }
+    } catch {
+      setEditMessage({ type: 'error', text: 'Connection error.' });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -724,14 +775,13 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                         )}
                       </div>
 
-                      {/* Simple status mover arrows */}
+                      {/* Status mover + Edit button */}
                       <div className="pt-2 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[10px] text-slate-400 font-bold">Move:</span>
                         <div className="flex gap-1">
                           {boardStatuses.indexOf(statusCol) > 0 && statusCol !== 'Booked' && (
                             <button
                               onClick={() => onUpdateVendorStatus(vendor._id, boardStatuses[boardStatuses.indexOf(statusCol) - 1])}
-                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-655 font-bold"
+                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-600 font-bold"
                             >
                               ←
                             </button>
@@ -739,12 +789,18 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                           {boardStatuses.indexOf(statusCol) < boardStatuses.length - 1 && (
                             <button
                               onClick={() => onUpdateVendorStatus(vendor._id, boardStatuses[boardStatuses.indexOf(statusCol) + 1])}
-                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-655 font-bold"
+                              className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-xs text-slate-600 font-bold"
                             >
                               →
                             </button>
                           )}
                         </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openEditModal(vendor); }}
+                          className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-0.5 transition-colors"
+                        >
+                          ✏️ Edit
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1040,6 +1096,222 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
           </div>
         );
       })()}
+
+      {/* ── Edit Vendor Modal ── */}
+      {editVendorModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  ✏️ Edit Vendor
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1 font-medium">Update details, packages, and contact info for this vendor.</p>
+              </div>
+              <button
+                onClick={() => setEditVendorModal(null)}
+                className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-700 text-xs font-bold transition-all"
+              >✕</button>
+            </div>
+
+            <form onSubmit={handleEditSave} className="overflow-y-auto flex-1 p-6 space-y-5">
+              {editMessage && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${editMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                  {editMessage.text}
+                </div>
+              )}
+
+              {/* Name + Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Name</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                    value={editVendorModal.vendorName}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, vendorName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                    value={editVendorModal.category}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, category: e.target.value })}
+                  >
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Status + Visibility + Cross View */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none"
+                    value={editVendorModal.status}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, status: e.target.value })}
+                  >
+                    {boardStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Visibility</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none"
+                    value={editVendorModal.sideVisibility}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, sideVisibility: e.target.value })}
+                  >
+                    <option value="Shared">Shared Pool</option>
+                    <option value="Bride">Bride Pool</option>
+                    <option value="Groom">Groom Pool</option>
+                  </select>
+                </div>
+                <div className="flex items-center pt-5">
+                  <input
+                    type="checkbox"
+                    id="editCrossView"
+                    className="rounded text-indigo-600 mr-2"
+                    checked={!!editVendorModal.allowCrossView}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, allowCrossView: e.target.checked })}
+                  />
+                  <label htmlFor="editCrossView" className="text-xs text-slate-600 font-semibold select-none">Allow Cross View</label>
+                </div>
+              </div>
+
+              {/* Contact + Instagram */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contact Number</label>
+                  <input
+                    type="tel"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                    value={editVendorModal.contactNumber || ''}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, contactNumber: e.target.value })}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Instagram URL</label>
+                  <input
+                    type="url"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                    value={editVendorModal.instagramUrl || ''}
+                    onChange={e => setEditVendorModal({ ...editVendorModal, instagramUrl: e.target.value })}
+                    placeholder="https://instagram.com/vendor"
+                  />
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Remarks / Notes</label>
+                <textarea
+                  rows={2}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                  value={editVendorModal.remarks || ''}
+                  onChange={e => setEditVendorModal({ ...editVendorModal, remarks: e.target.value })}
+                  placeholder="Any notes about this vendor..."
+                />
+              </div>
+
+              {/* Packages */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Packages & Pricing</h4>
+                  <button
+                    type="button"
+                    onClick={() => setEditVendorModal({
+                      ...editVendorModal,
+                      packages: [...(editVendorModal.packages || []), { packageName: 'New Package', totalCost: 0, deliverables: [], finePrint: [] }]
+                    })}
+                    className="text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Package
+                  </button>
+                </div>
+                {(editVendorModal.packages || []).map((pkg, pIdx) => (
+                  <div key={pIdx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3 relative">
+                    <button
+                      type="button"
+                      onClick={() => setEditVendorModal({
+                        ...editVendorModal,
+                        packages: editVendorModal.packages.filter((_, i) => i !== pIdx)
+                      })}
+                      className="absolute top-3 right-3 text-slate-300 hover:text-rose-500 transition-colors"
+                    ><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-indigo-400"
+                        value={pkg.packageName}
+                        onChange={e => {
+                          const pkgs = [...editVendorModal.packages];
+                          pkgs[pIdx] = { ...pkgs[pIdx], packageName: e.target.value };
+                          setEditVendorModal({ ...editVendorModal, packages: pkgs });
+                        }}
+                        placeholder="Package name"
+                      />
+                      <input
+                        type="number"
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-indigo-400"
+                        value={pkg.totalCost}
+                        onChange={e => {
+                          const pkgs = [...editVendorModal.packages];
+                          pkgs[pIdx] = { ...pkgs[pIdx], totalCost: Number(e.target.value) };
+                          setEditVendorModal({ ...editVendorModal, packages: pkgs });
+                        }}
+                        placeholder="Total cost ₹"
+                      />
+                    </div>
+                    {(pkg.deliverables || []).map((del, dIdx) => (
+                      <div key={dIdx} className="flex gap-2">
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white focus:outline-none"
+                          value={del}
+                          onChange={e => {
+                            const pkgs = [...editVendorModal.packages];
+                            const dels = [...pkgs[pIdx].deliverables];
+                            dels[dIdx] = e.target.value;
+                            pkgs[pIdx] = { ...pkgs[pIdx], deliverables: dels };
+                            setEditVendorModal({ ...editVendorModal, packages: pkgs });
+                          }}
+                          placeholder="Deliverable item"
+                        />
+                        <button type="button" onClick={() => {
+                          const pkgs = [...editVendorModal.packages];
+                          pkgs[pIdx] = { ...pkgs[pIdx], deliverables: pkgs[pIdx].deliverables.filter((_, i) => i !== dIdx) };
+                          setEditVendorModal({ ...editVendorModal, packages: pkgs });
+                        }} className="text-slate-300 hover:text-rose-500">×</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => {
+                      const pkgs = [...editVendorModal.packages];
+                      pkgs[pIdx] = { ...pkgs[pIdx], deliverables: [...(pkgs[pIdx].deliverables || []), ''] };
+                      setEditVendorModal({ ...editVendorModal, packages: pkgs });
+                    }} className="text-[10px] text-indigo-600 font-semibold hover:underline">+ Add Deliverable</button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Save button */}
+              <button
+                type="submit"
+                disabled={editSaving}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" />
+                {editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

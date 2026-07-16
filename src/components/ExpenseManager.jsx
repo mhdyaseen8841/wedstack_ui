@@ -25,6 +25,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   const [balanceDueDate, setBalanceDueDate] = useState('');
   const [balanceRemarks, setBalanceRemarks] = useState('');
   const [selectedNeededServiceId, setSelectedNeededServiceId] = useState('');
+  const [showRecordModal, setShowRecordModal] = useState(false);
 
   const [editingExpense, setEditingExpense] = useState(null);
   
@@ -257,6 +258,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
         setBalanceDueDate('');
         setBalanceRemarks('');
         setMessage({ type: 'success', text: 'Expense recorded successfully!' });
+        setShowRecordModal(false);
       }
     } catch (err) {
       const fallback = { 
@@ -284,6 +286,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       setBalanceDueDate('');
       setBalanceRemarks('');
       setMessage({ type: 'success', text: 'Expense recorded locally (Offline).' });
+      setShowRecordModal(false);
     }
   };
 
@@ -411,7 +414,11 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   // Calculate service breakdown stats
   const serviceStats = neededServices.map(srv => {
     // Find all expenses linked to this service
-    const linkedExpenses = expenses.filter(e => e.neededServiceId === srv._id).map(e => parseExpense(e));
+    const linkedExpenses = expenses.filter(e => 
+      e.neededServiceId === srv._id || 
+      (e.category && srv.name && e.category.toLowerCase() === srv.name.toLowerCase()) ||
+      (e.category && srv.category && e.category.toLowerCase() === srv.category.toLowerCase())
+    ).map(e => parseExpense(e));
     const totalCost = linkedExpenses.reduce((sum, e) => sum + e.amount, 0);
     const totalPaid = linkedExpenses.reduce((sum, e) => sum + (e.advancePaid || 0), 0);
     const totalBalance = totalCost - totalPaid;
@@ -460,6 +467,15 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
               <span className="text-rose-500">Partner Sharing: Private</span>
             )}
           </div>
+
+          {canEditCurrentSide && (
+            <button
+              onClick={() => setShowRecordModal(true)}
+              className="px-5 py-2.5 bg-[#1a1a3c] hover:bg-[#2c2c5c] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Record Expense
+            </button>
+          )}
         </div>
       </div>
 
@@ -576,260 +592,8 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
         </div>
       )}
 
-      {/* 2. Grid split layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        {/* Left Column: Record Expense Form OR Lock Banner */}
-        <div className="lg:col-span-1">
-          {canEditCurrentSide ? (
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest pb-3 border-b border-slate-100">Record Expense</h3>
-              
-              {message && (
-                <div className={`p-3 rounded-xl text-xs font-bold ${
-                  message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                }`}>
-                  {message.text}
-                </div>
-              )}
-
-              <form onSubmit={handleAddExpense} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expense Title</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
-                    placeholder="e.g. Wedding Suit purchase / Rings deposit"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Needed Service (Optional)</label>
-                  <select
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/10"
-                    value={selectedNeededServiceId}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedNeededServiceId(val);
-                      const linked = neededServices.find(s => s._id === val);
-                      if (linked) {
-                        setCategory(linked.name);
-                      }
-                    }}
-                  >
-                    <option value="">None / General Expense</option>
-                    {neededServices.map(srv => (
-                      <option key={srv._id} value={srv._id}>{srv.icon} {srv.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Cost (₹)</label>
-                    <input
-                      type="number"
-                      required
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold"
-                      placeholder="₹2000"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
-                    <select
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payer Pool</label>
-                  <select
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
-                    value={paidBy}
-                    onChange={(e) => setPaidBy(e.target.value)}
-                  >
-                    {isPlanner && <option value="Shared">Shared / Common Split Cost</option>}
-                    {side === 'Groom' || isPlanner ? <option value="Groom">Groom Personal Ledger (Private)</option> : null}
-                    {side === 'Bride' || isPlanner ? <option value="Bride">Bride Personal Ledger (Private)</option> : null}
-                  </select>
-                </div>
-
-                {paidBy === 'Shared' && (
-                  <div className="p-4 border border-indigo-100 rounded-2xl bg-indigo-50/20 space-y-3">
-                    <span className="text-[9px] font-bold text-indigo-650 uppercase tracking-wider block">Common Event Cost Split</span>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Groom Share (₹)</label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                          placeholder="₹1000"
-                          value={groomSplit}
-                          onChange={(e) => setGroomSplit(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Bride Share (₹)</label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                          placeholder="₹1000"
-                          value={brideSplit}
-                          onChange={(e) => setBrideSplit(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Advance Paid (₹)</label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                          placeholder="₹500"
-                          value={advancePaid}
-                          onChange={(e) => setAdvancePaid(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Paid By</label>
-                        <select
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                          value={advancePayer}
-                          onChange={(e) => setAdvancePayer(e.target.value)}
-                        >
-                          <option value="Groom">Groom</option>
-                          <option value="Bride">Bride</option>
-                          <option value="Both">Both (50/50)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bookkeeping & Advance Fields */}
-                <div className="p-4 border border-slate-200/60 rounded-2xl bg-slate-50/50 space-y-3">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Bookkeeping & Payment Details</span>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Advance Paid (₹)</label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                        placeholder="e.g. 500"
-                        value={advancePaid}
-                        onChange={(e) => setAdvancePaid(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Mode</label>
-                      <select
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold focus:outline-none"
-                        value={paymentMode}
-                        onChange={(e) => setPaymentMode(e.target.value)}
-                      >
-                        <option value="Cash">💵 Cash</option>
-                        <option value="Card">💳 Card</option>
-                        <option value="Bank Transfer">🏦 Bank Transfer</option>
-                        <option value="UPI">📱 UPI</option>
-                        <option value="Others">⚙️ Others</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Date</label>
-                      <input
-                        type="date"
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
-                        value={paidDate}
-                        onChange={(e) => setPaidDate(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Due Date</label>
-                      <input
-                        type="date"
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
-                        value={balanceDueDate}
-                        onChange={(e) => setBalanceDueDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Remarks (Optional)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
-                      placeholder="e.g. Pay remaining on delivery"
-                      value={balanceRemarks}
-                      onChange={(e) => setBalanceRemarks(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Realtime Balance display */}
-                  <div className="text-[10px] text-slate-400 font-bold uppercase pt-1 border-t border-slate-200/60 flex justify-between">
-                    <span>Remaining Balance:</span>
-                    <span className="text-slate-800 font-extrabold">₹{(parseFloat(amount) || 0) - (parseFloat(advancePaid) || 0)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center pt-1">
-                  <input
-                    type="checkbox"
-                    id="isPaid"
-                    className="rounded text-indigo-655 mr-2"
-                    checked={isPaid}
-                    onChange={(e) => {
-                      setIsPaid(e.target.checked);
-                      if (e.target.checked && amount) {
-                        setAdvancePaid(amount);
-                      }
-                    }}
-                  />
-                  <label htmlFor="isPaid" className="text-xs text-slate-500 font-bold select-none">Mark paid fully</label>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" /> Save Expense Record
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-6 text-center space-y-4 shadow-inner">
-              <Lock className="w-8 h-8 text-slate-400 mx-auto" />
-              <div>
-                <h4 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest block">Read-Only View</h4>
-                <p className="text-[11px] text-slate-400 font-bold uppercase mt-1">Logged in: {user?.role || 'Guest'}</p>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                You are in <strong>{side} View</strong>. Expenses can only be recorded and managed directly from your own personal workspace page view.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Ledger Columns (Side-by-Side) */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* 2. Ledger Columns */}
+      <div className="space-y-6">
           
           {/* 1. Shared / Common Ledger items */}
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -1071,8 +835,6 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
           </div>
 
         </div>
-
-      </div>
 
       {/* Edit Expense Popup Modal */}
       {editingExpense && (
@@ -1321,6 +1083,255 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                 className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
               >
                 ✏️ {editSubmitting ? 'Saving...' : 'Update Expense Record'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Expense Popup Modal */}
+      {showRecordModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowRecordModal(false)} 
+              className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
+            >
+              ✕
+            </button>
+            
+            <div className="mb-4">
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100 flex items-center gap-1.5">
+                ➕ Record Expense
+              </h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">
+                Log a new budget or ledger expense item.
+              </p>
+            </div>
+
+            {message && (
+              <div className={`p-3 rounded-xl text-xs font-bold mb-4 ${
+                message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+              }`}>
+                {message.text}
+              </div>
+            )}
+
+            <form onSubmit={handleAddExpense} className="space-y-4 text-slate-850">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expense Title</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none"
+                  placeholder="e.g. Wedding Suit purchase / Rings deposit"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Linked Needed Service (Optional)</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                  value={selectedNeededServiceId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedNeededServiceId(val);
+                    const linked = neededServices.find(s => s._id === val);
+                    if (linked) {
+                      setCategory(linked.name);
+                    }
+                  }}
+                >
+                  <option value="">None / General Expense</option>
+                  {neededServices.map(srv => (
+                    <option key={srv._id} value={srv._id}>{srv.icon} {srv.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Cost (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                    placeholder="₹2000"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                  <select
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payer Pool</label>
+                <select
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-700"
+                  value={paidBy}
+                  onChange={(e) => setPaidBy(e.target.value)}
+                >
+                  {isPlanner && <option value="Shared">Shared / Common Split Cost</option>}
+                  {side === 'Groom' || isPlanner ? <option value="Groom">Groom Personal Ledger (Private)</option> : null}
+                  {side === 'Bride' || isPlanner ? <option value="Bride">Bride Personal Ledger (Private)</option> : null}
+                </select>
+              </div>
+
+              {paidBy === 'Shared' && (
+                <div className="p-4 border border-indigo-100 rounded-2xl bg-indigo-50/20 space-y-3">
+                  <span className="text-[9px] font-bold text-indigo-650 uppercase tracking-wider block">Common Event Cost Split</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Groom Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={groomSplit}
+                        onChange={(e) => setGroomSplit(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Bride Share (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹1000"
+                        value={brideSplit}
+                        onChange={(e) => setBrideSplit(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Advance Paid (₹)</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        placeholder="₹500"
+                        value={advancePaid}
+                        onChange={(e) => setAdvancePaid(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase">Paid By</label>
+                      <select
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                        value={advancePayer}
+                        onChange={(e) => setAdvancePayer(e.target.value)}
+                      >
+                        <option value="Groom">Groom</option>
+                        <option value="Bride">Bride</option>
+                        <option value="Both">Both (50/50)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bookkeeping & Advance Fields */}
+              <div className="p-4 border border-slate-200/60 rounded-2xl bg-slate-50/50 space-y-3">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Bookkeeping & Payment Details</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Advance Paid (₹)</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                      placeholder="e.g. 500"
+                      value={advancePaid}
+                      onChange={(e) => setAdvancePaid(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Mode</label>
+                    <select
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold focus:outline-none"
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value)}
+                    >
+                      <option value="Cash">💵 Cash</option>
+                      <option value="Card">💳 Card</option>
+                      <option value="Bank Transfer">🏦 Bank Transfer</option>
+                      <option value="UPI">📱 UPI</option>
+                      <option value="Others">⚙️ Others</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Payment Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                      value={paidDate}
+                      onChange={(e) => setPaidDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Due Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                      value={balanceDueDate}
+                      onChange={(e) => setBalanceDueDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Balance Remarks (Optional)</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none"
+                    placeholder="e.g. Pay remaining on delivery"
+                    value={balanceRemarks}
+                    onChange={(e) => setBalanceRemarks(e.target.value)}
+                  />
+                </div>
+
+                <div className="text-[10px] text-slate-400 font-bold uppercase pt-1 border-t border-slate-200/60 flex justify-between">
+                  <span>Remaining Balance:</span>
+                  <span className="text-slate-800 font-extrabold">₹{(parseFloat(amount) || 0) - (parseFloat(advancePaid) || 0)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center pt-1">
+                <input
+                  type="checkbox"
+                  id="isPaid"
+                  className="rounded text-indigo-650 mr-2"
+                  checked={isPaid}
+                  onChange={(e) => {
+                    setIsPaid(e.target.checked);
+                    if (e.target.checked && amount) {
+                      setAdvancePaid(amount);
+                    }
+                  }}
+                />
+                <label htmlFor="isPaid" className="text-xs text-slate-500 font-bold select-none cursor-pointer">Mark paid fully</label>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Save Expense Record
               </button>
             </form>
           </div>

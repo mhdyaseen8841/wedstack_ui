@@ -11,13 +11,13 @@ import WeddingHub from './components/WeddingHub';
 
 function LogoIcon({ className = "w-6 h-6" }) {
   return (
-    <svg 
-      className={className} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.3" 
-      strokeLinecap="round" 
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       {/* Left Ring */}
@@ -41,15 +41,15 @@ export default function App() {
   const [programDetails, setProgramDetails] = useState([]);
   const [neededServices, setNeededServices] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState(null);
-  
+
   // Sidebar Toggles
   const [showNotesSidebar, setShowNotesSidebar] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [noteSideSelect, setNoteSideSelect] = useState('Shared');
-  
+
   // Workspace Accent State: 'Bride', 'Groom', 'Shared'
   const [activeSide, setActiveSide] = useState('Shared');
-  
+
   // Dashboard Tabs (Initialize from URL hash if available)
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
@@ -71,7 +71,7 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [activeTab]);
-  
+
   // Auth Form State
   const [isRegister, setIsRegister] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
@@ -83,7 +83,7 @@ export default function App() {
   const [regWeddingCode, setRegWeddingCode] = useState('');
   const [regWeddingDate, setRegWeddingDate] = useState('');
   const [regTotalBudget, setRegTotalBudget] = useState('45000');
-  
+
   const [copiedCode, setCopiedCode] = useState(false);
   const [publicPortalId, setPublicPortalId] = useState(null);
 
@@ -99,7 +99,7 @@ export default function App() {
     if (!token || token === 'mock-token') return;
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
-      
+
       const userRes = await fetch('http://localhost:5000/api/auth/me', { headers });
       if (userRes.ok) {
         const userData = await userRes.json();
@@ -272,7 +272,7 @@ export default function App() {
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify(servicePayload)
             });
-          } catch (err) {}
+          } catch (err) { }
         }
       }
 
@@ -310,7 +310,7 @@ export default function App() {
               const savedExp = await expRes.json();
               setExpenses(prev => prev.map(e => e._id === fallbackExp._id ? savedExp : e));
             }
-          } catch (err) {}
+          } catch (err) { }
         }
       }
     }
@@ -367,16 +367,16 @@ export default function App() {
         const saved = await res.json();
         setExpenses(prev => prev.map(e => e._id === fallback._id ? saved : e));
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const handleToggleService = async (serviceId, checked, sideToUpdate) => {
     const isBride = sideToUpdate === 'Bride';
     const updatePayload = isBride ? { brideCompleted: checked } : { groomCompleted: checked };
-    
+
     const original = [...neededServices];
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, ...updatePayload } : s));
-    
+
     if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
@@ -393,7 +393,7 @@ export default function App() {
   const handleAddNeededService = async (name, category, icon) => {
     const fallback = { _id: Date.now().toString(), name, category, icon: icon || '🏢', brideCompleted: false, groomCompleted: false };
     setNeededServices([...neededServices, fallback]);
-    
+
     if (token === 'mock-token') return;
     try {
       const res = await fetch('http://localhost:5000/api/needed-services', {
@@ -405,13 +405,13 @@ export default function App() {
         const saved = await res.json();
         setNeededServices(prev => prev.map(s => s._id === fallback._id ? saved : s));
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const handleUpdateNeededService = async (serviceId, name, category, icon) => {
     const original = [...neededServices];
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, name, category, icon } : s));
-    
+
     if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
@@ -428,7 +428,7 @@ export default function App() {
   const handleDeleteNeededService = async (serviceId) => {
     const original = [...neededServices];
     setNeededServices(neededServices.filter(s => s._id !== serviceId));
-    
+
     if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
@@ -445,16 +445,16 @@ export default function App() {
     e.preventDefault();
     setAuthError(null);
     const endpoint = isRegister ? 'register' : 'login';
-    const payload = isRegister 
-      ? { 
-          name: authName, 
-          email: authEmail, 
-          password: authPassword, 
-          role: authRole,
-          weddingCode: regMode === 'join' ? regWeddingCode : undefined,
-          totalBudget: regMode === 'create' ? Number(regTotalBudget) : undefined,
-          weddingDate: regMode === 'create' ? regWeddingDate : undefined
-        }
+    const payload = isRegister
+      ? {
+        name: authName,
+        email: authEmail,
+        password: authPassword,
+        role: authRole,
+        weddingCode: regMode === 'join' ? regWeddingCode : undefined,
+        totalBudget: regMode === 'create' ? Number(regTotalBudget) : undefined,
+        weddingDate: regMode === 'create' ? regWeddingDate : undefined
+      }
       : { email: authEmail, password: authPassword };
 
     try {
@@ -525,7 +525,7 @@ export default function App() {
         const newNote = await res.json();
         setNotes(prev => prev.map(n => n._id === fallback._id ? newNote : n));
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const handleToggleNote = async (id, completed) => {
@@ -537,7 +537,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ completed })
       });
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const handleDeleteNote = async (id) => {
@@ -548,7 +548,7 @@ export default function App() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const copyInviteCode = () => {
@@ -643,18 +643,16 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setRegMode('create')}
-                      className={`flex-1 py-1.5 rounded-md transition-all ${
-                        regMode === 'create' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
-                      }`}
+                      className={`flex-1 py-1.5 rounded-md transition-all ${regMode === 'create' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                        }`}
                     >
                       Start New Event
                     </button>
                     <button
                       type="button"
                       onClick={() => setRegMode('join')}
-                      className={`flex-1 py-1.5 rounded-md transition-all ${
-                        regMode === 'join' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
-                      }`}
+                      className={`flex-1 py-1.5 rounded-md transition-all ${regMode === 'join' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                        }`}
                     >
                       Join with Code
                     </button>
@@ -735,21 +733,21 @@ export default function App() {
   const accentColorClass = activeSide === 'Bride'
     ? 'bg-rose-50 border border-rose-100 text-rose-700'
     : activeSide === 'Groom'
-    ? 'bg-sky-50 border border-sky-100 text-sky-700'
-    : 'bg-indigo-600 text-white hover:bg-indigo-700';
+      ? 'bg-sky-50 border border-sky-100 text-sky-700'
+      : 'bg-indigo-600 text-white hover:bg-indigo-700';
 
   const textAccent = activeSide === 'Bride' ? 'text-rose-600' : activeSide === 'Groom' ? 'text-sky-650' : 'text-indigo-600';
   const borderAccent = activeSide === 'Bride' ? 'border-rose-300' : activeSide === 'Groom' ? 'border-sky-300' : 'border-indigo-600';
 
   return (
     <div className="min-h-screen w-screen bg-slate-50 text-slate-800 tracking-tight antialiased flex flex-col">
-      
+
       {/* 1. Global Responsive Top Header */}
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80 shadow-sm shrink-0">
-        
+
         {/* Row 1: Brand details, segmented Workspace Pill Switcher, and profile tools */}
         <div className="w-full px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          
+
           {/* Logo */}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md">
@@ -763,9 +761,8 @@ export default function App() {
             {user?.role !== 'Groom' && (
               <button
                 onClick={() => setActiveSide('Bride')}
-                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-                  activeSide === 'Bride' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${activeSide === 'Bride' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Bride View
               </button>
@@ -773,9 +770,8 @@ export default function App() {
             {wedding?.brideAllowsMutual !== false && wedding?.groomAllowsMutual !== false && (
               <button
                 onClick={() => setActiveSide('Shared')}
-                className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                  activeSide === 'Shared' ? 'bg-white shadow-sm text-indigo-650' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`px-3.5 py-1.5 rounded-lg transition-all ${activeSide === 'Shared' ? 'bg-white shadow-sm text-indigo-650' : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Mutual View
               </button>
@@ -783,9 +779,8 @@ export default function App() {
             {user?.role !== 'Bride' && (
               <button
                 onClick={() => setActiveSide('Groom')}
-                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-                  activeSide === 'Groom' ? 'bg-white shadow-sm text-sky-655' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${activeSide === 'Groom' ? 'bg-white shadow-sm text-sky-655' : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Groom View
               </button>
@@ -843,8 +838,8 @@ export default function App() {
         <div className="hidden md:block border-t border-slate-100 bg-slate-50/50">
           <div className="w-full px-4 md:px-8 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
-              { id: 'hub', label: 'Wedding Hub', icon: Heart },
-              { id: 'inbox', label: 'AI Quote Inbox', icon: Sparkles },
+              { id: 'hub', label: 'Dashboard', icon: Heart },
+              { id: 'inbox', label: 'Vendor Manage', icon: Sparkles },
               { id: 'comparison', label: 'VS Comparison Matrix', icon: ClipboardList },
               { id: 'budget', label: 'Tri-Color Budget', icon: DollarSign },
               { id: 'expenses', label: 'Expenses Log', icon: Landmark },
@@ -854,7 +849,7 @@ export default function App() {
             ].map(tab => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               let activeClass = 'bg-white border border-slate-200/80 text-indigo-650 shadow-xs';
               if (isActive) {
                 if (activeSide === 'Bride') activeClass = 'bg-white border border-rose-200 text-rose-600 shadow-xs';
@@ -865,11 +860,10 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                    isActive ? activeClass : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${isActive ? activeClass : 'text-slate-500 hover:text-slate-800'
+                    }`}
                 >
-                          <TabIcon className="w-3.5 h-3.5" />
+                  <TabIcon className="w-3.5 h-3.5" />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -933,7 +927,7 @@ export default function App() {
                   onExpenseDeleted={handleExpenseDeleted}
                 />
               )}
-              
+
               {activeTab === 'comparison' && (
                 <VendorMatrix vendors={vendors} />
               )}
@@ -1009,7 +1003,7 @@ export default function App() {
         ].map(tab => {
           const TabIcon = tab.icon;
           const isActive = activeTab === tab.id;
-          
+
           let activeText = 'text-indigo-600';
           if (isActive) {
             if (activeSide === 'Bride') activeText = 'text-rose-600';
@@ -1020,9 +1014,8 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${
-                isActive ? `${activeText} font-extrabold scale-105` : 'text-slate-400 font-semibold'
-              }`}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${isActive ? `${activeText} font-extrabold scale-105` : 'text-slate-400 font-semibold'
+                }`}
             >
               <TabIcon className="w-4.5 h-4.5" />
               <span className="text-[9px] tracking-tight leading-none">{tab.label}</span>
@@ -1034,18 +1027,18 @@ export default function App() {
       {/* Scratchpad Reminders drawer */}
       {showNotesSidebar && (
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-          <div 
+          <div
             className="absolute inset-0 bg-slate-900/35 backdrop-blur-xs transition-opacity"
             onClick={() => setShowNotesSidebar(false)}
           ></div>
-          
+
           <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 z-20">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-1.5">
                 <Lightbulb className="w-5 h-5 text-amber-500 fill-amber-100" />
                 <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest">Brain Dump Notes</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setShowNotesSidebar(false)}
                 className="text-slate-405 text-slate-400 hover:text-slate-655 font-bold text-sm p-1 rounded-md hover:bg-slate-150"
               >
@@ -1085,18 +1078,17 @@ export default function App() {
               {notes.map(note => {
                 const noteSide = note.side || 'Shared';
                 const isCompleted = note.completed;
-                const sideColor = noteSide === 'Bride' 
-                  ? 'bg-rose-50/50 border-rose-100 text-rose-900' 
-                  : noteSide === 'Groom' 
-                  ? 'bg-sky-50/50 border-sky-100 text-sky-900' 
-                  : 'bg-indigo-50/50 border-indigo-100 text-indigo-900';
+                const sideColor = noteSide === 'Bride'
+                  ? 'bg-rose-50/50 border-rose-100 text-rose-900'
+                  : noteSide === 'Groom'
+                    ? 'bg-sky-50/50 border-sky-100 text-sky-900'
+                    : 'bg-indigo-50/50 border-indigo-100 text-indigo-900';
 
                 return (
-                  <div 
-                    key={note._id} 
-                    className={`p-3 rounded-xl border shadow-xs flex justify-between gap-3 transition-all ${sideColor} ${
-                      isCompleted ? 'opacity-40 line-through' : ''
-                    }`}
+                  <div
+                    key={note._id}
+                    className={`p-3 rounded-xl border shadow-xs flex justify-between gap-3 transition-all ${sideColor} ${isCompleted ? 'opacity-40 line-through' : ''
+                      }`}
                   >
                     <div className="flex items-start gap-2 flex-1">
                       <input

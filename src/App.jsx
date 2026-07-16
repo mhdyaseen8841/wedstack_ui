@@ -993,7 +993,7 @@ export default function App() {
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 z-40 flex items-center justify-around py-2.5 px-2 shadow-lg shrink-0">
         {[
           { id: 'hub', label: 'Hub', icon: Heart },
-          { id: 'inbox', label: 'AI Inbox', icon: Sparkles },
+          { id: 'inbox', label: 'AI Vendor', icon: Sparkles },
           { id: 'comparison', label: 'Vs Matrix', icon: ClipboardList },
           { id: 'budget', label: 'Budget', icon: DollarSign },
           { id: 'expenses', label: 'Expense', icon: Landmark },

@@ -17,6 +17,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
   const [message, setMessage] = useState(null);
   const [expenseModalVendor, setExpenseModalVendor] = useState(null);
   const [cancelModalVendor, setCancelModalVendor] = useState(null);
+  const [showParserPanel, setShowParserPanel] = useState(true);
 
   // Expense popup form states
   const [expenseTitle, setExpenseTitle] = useState('');
@@ -303,11 +304,36 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
           </button>
         </div>
       )}
-      {/* Inbox Split View Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Accordion Wrapper for Quote Parser & Vendor Details */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowParserPanel(!showParserPanel)}
+          className="w-full p-6 flex justify-between items-center text-left hover:bg-slate-50/50 transition-colors focus:outline-none"
+        >
+          <div>
+            <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              Fast-Capture Quote Parser & Vendor Entry
+            </h3>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">
+              Add new vendors quickly by copy-pasting raw quote details or typing manually.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl">
+              {showParserPanel ? 'Click to hide forms' : 'Click to expand forms'}
+            </span>
+            <span className={`text-slate-400 transition-transform duration-300 font-black text-sm ${showParserPanel ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+          </div>
+        </button>
 
-        {/* Left Side: Unstructured Paste */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        {showParserPanel && (
+          <div className="p-6 border-t border-slate-100 bg-slate-50/10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Side: Unstructured Paste */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-indigo-600 animate-pulse" />
@@ -555,7 +581,11 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
             </button>
           </form>
         </div>
+
       </div>
+    </div>
+  )}
+</div>
 
       {/* Visual Status Tracking Board (Kanban) */}
       <div>

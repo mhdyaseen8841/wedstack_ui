@@ -654,7 +654,11 @@ export default function WeddingHub({
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowServiceManager(!showServiceManager)}
-                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg"
+                  className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all shadow-sm ${
+                    showServiceManager
+                      ? "bg-rose-600 hover:bg-rose-750 text-white"
+                      : "bg-slate-50 border border-slate-250 text-indigo-650 hover:bg-slate-100"
+                  }`}
                 >
                   {showServiceManager ? "✕ Close Editor" : "🔧 Edit Needed Services"}
                 </button>

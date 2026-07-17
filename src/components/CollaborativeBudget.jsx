@@ -51,9 +51,6 @@ export default function CollaborativeBudget({ wedding, vendors, expenses = [], t
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        headers['x-mock-side'] = 'Shared';
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch('http://localhost:5000/api/wedding', {

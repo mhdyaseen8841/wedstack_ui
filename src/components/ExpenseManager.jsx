@@ -360,7 +360,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       installments: editInstallments
     };
 
-    if (token !== 'mock-token') {
+    if (token) {
       try {
         const res = await fetch(`http://localhost:5000/api/expenses/${editingExpense._id}`, {
           method: 'PATCH',
@@ -375,8 +375,6 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
           onExpenseUpdated(updated);
         }
       } catch (err) {}
-    } else {
-      onExpenseUpdated({ _id: editingExpense._id, ...payload });
     }
 
     setEditSubmitting(false);

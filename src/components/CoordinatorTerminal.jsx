@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Phone, Clock, AlertTriangle, Landmark, Calendar, Sparkles, Share2 } from 'lucide-react';
 
-export default function CoordinatorTerminal({ weddingId, mockMode }) {
+export default function CoordinatorTerminal({ weddingId, isPublicView }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const hashToken = weddingId || 'mock-wedding-id';
+  const hashToken = weddingId || '';
   const publicLink = `${window.location.origin}/?public=${hashToken}`;
 
   const copyLink = () => {
@@ -17,38 +17,21 @@ export default function CoordinatorTerminal({ weddingId, mockMode }) {
 
   useEffect(() => {
     const fetchPublicData = async () => {
+      if (!weddingId) {
+        setLoading(false);
+        return;
+      }
       try {
-        const targetId = weddingId || 'mock-wedding-id';
-        const res = await fetch(`http://localhost:5000/api/wedding/public-portal/${targetId}`);
+        const res = await fetch(`http://localhost:5000/api/wedding/public-portal/${weddingId}`);
         const result = await res.json();
         if (res.ok) {
           setData(result);
-        } else {
-          setMockFallback();
         }
       } catch (err) {
-        setMockFallback();
+        console.error(err);
       } finally {
         setLoading(false);
       }
-    };
-
-    const setMockFallback = () => {
-      setData({
-        wedding: { totalBudget: 45000, budgetSplitRatio: 50 },
-        timeline: [
-          { _id: '1', startTime: '08:00 AM', durationMinutes: 120, activityTitle: 'Bridal Makeup Session', assignedSide: 'Bride', coordinatorId: 'Aunt Lily (+1-555-9011)' },
-          { _id: '2', startTime: '10:00 AM', durationMinutes: 60, activityTitle: 'Groom Prep & Suit Fitting', assignedSide: 'Groom', coordinatorId: 'Best Man Mark (+1-555-2244)' },
-          { _id: '3', startTime: '11:30 AM', durationMinutes: 90, activityTitle: 'First Look Photoshoot', assignedSide: 'Shared', coordinatorId: 'Sarah Coordinator (+1-555-4499)' },
-          { _id: '4', startTime: '01:30 PM', durationMinutes: 60, activityTitle: 'Ceremony Exchange', assignedSide: 'Shared', coordinatorId: 'Sarah Coordinator (+1-555-4499)' },
-          { _id: '5', startTime: '03:00 PM', durationMinutes: 120, activityTitle: 'Grand Banquet Setup', assignedSide: 'Shared', coordinatorId: 'Dave Venue Manager (+1-555-8833)' }
-        ],
-        vendors: [
-          { vendorName: 'Elegance Photography', category: 'Photography', status: 'Booked', packages: [{ packageName: 'Classic Collection', totalCost: 3500 }] },
-          { vendorName: 'Blossom Makeup Artistry', category: 'Makeup', status: 'Booked', packages: [{ packageName: 'Bridal Glow Pack', totalCost: 1200 }] },
-          { vendorName: 'Feast & Flavour Catering', category: 'Catering', status: 'Shortlisted', packages: [{ packageName: 'Deluxe Buffet', totalCost: 7500 }] }
-        ]
-      });
     };
 
     fetchPublicData();
@@ -63,7 +46,17 @@ export default function CoordinatorTerminal({ weddingId, mockMode }) {
     );
   }
 
-  const { timeline, vendors } = data || {};
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-slate-500 text-center max-w-sm mx-auto bg-white rounded-3xl border border-slate-100 shadow-md">
+        <AlertTriangle className="w-10 h-10 text-amber-500 mb-2" />
+        <h3 className="font-bold text-sm text-slate-800">Connection Error</h3>
+        <p className="text-xs text-slate-500 mt-1">Could not retrieve live coordinator terminal data. Please check your connection or invitation link.</p>
+      </div>
+    );
+  }
+
+  const { timeline = [], vendors = [] } = data;
 
   // Simple helper to parse phone links
   const getPhoneNumber = (text) => {
@@ -174,8 +167,8 @@ export default function CoordinatorTerminal({ weddingId, mockMode }) {
     </div>
   );
 
-  // If mockMode (meaning viewed directly via public link URL), render clean responsive full page without mockup device frame
-  if (mockMode) {
+  // If isPublicView (meaning viewed directly via public link URL), render clean responsive full page without device frame
+  if (isPublicView) {
     return (
       <div className="w-full max-w-md bg-white min-h-screen shadow-lg flex flex-col justify-between">
         {renderContent()}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Save, FileText, CheckCircle2, ChevronRight, Plus, Trash2, Check, Lock, Landmark, Users } from 'lucide-react';
 
-export default function FastCaptureInbox({ token, side, onVendorCreated, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter, onLogVendorExpense, expenses = [], onExpenseDeleted }) {
+export default function FastCaptureInbox({ token, side, onVendorCreated, onVendorUpdated, onVendorDeleted, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter, onLogVendorExpense, expenses = [], onExpenseDeleted }) {
   const categories = neededServices.length > 0
     ? neededServices.map(s => s.name)
     : ['Venue / Auditorium Booking', 'Makeup & Grooming (Groom)', 'Makeup & Bridal Styling (Bride)', 'Photo & Video Services', 'Event Planner / Decor Decorators', 'Entertainment & Music / DJ', 'Food Catering Services', 'Vehicle & Transport Logistics'];
@@ -24,6 +24,36 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
   const [editVendorModal, setEditVendorModal] = useState(null); // vendor object being edited
   const [editSaving, setEditSaving] = useState(false);
   const [editMessage, setEditMessage] = useState(null);
+
+  // Drag and Drop state
+  const [draggedVendor, setDraggedVendor] = useState(null);
+  const [draggedOverCol, setDraggedOverCol] = useState(null);
+
+  const handleDragStart = (e, vendor) => {
+    setDraggedVendor(vendor);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e, statusCol) => {
+    e.preventDefault();
+    setDraggedOverCol(statusCol);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverCol(null);
+  };
+
+  const handleDrop = (e, targetStatus) => {
+    e.preventDefault();
+    setDraggedOverCol(null);
+    if (draggedVendor && draggedVendor.status !== targetStatus) {
+      onUpdateVendorStatus(draggedVendor._id, targetStatus);
+    }
+    setDraggedVendor(null);
+  };
 
   // Expense popup form states
   const [expenseTitle, setExpenseTitle] = useState('');
@@ -119,7 +149,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
   };
 
   const handleDeleteAssociatedExpense = async (expenseId) => {
-    if (token !== 'mock-token') {
+    if (token) {
       try {
         await fetch(`http://localhost:5000/api/expenses/${expenseId}`, {
           method: 'DELETE',
@@ -141,6 +171,41 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
     setCancelModalVendor(null);
   };
 
+  const handleDeleteVendor = async (vendor) => {
+    if (vendor.status === 'Booked') {
+      alert("Booked vendors cannot be deleted. Cancel the booking first to delete.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete ${vendor.vendorName}? This will also delete all associated expenses.`)) {
+      return;
+    }
+
+    try {
+      const associated = getAssociatedExpenses(vendor);
+      for (const exp of associated) {
+        await handleDeleteAssociatedExpense(exp._id);
+      }
+
+      if (token) {
+        const res = await fetch(`http://localhost:5000/api/vendors/${vendor._id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          if (onVendorDeleted) onVendorDeleted(vendor._id);
+        } else {
+          const errData = await res.json();
+          alert(errData.message || "Failed to delete vendor.");
+        }
+      } else {
+        if (onVendorDeleted) onVendorDeleted(vendor._id);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting vendor.");
+    }
+  };
+
   // Handle parsing
   const handleParse = async () => {
     if (!rawText.trim()) return;
@@ -150,10 +215,6 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        // Fallback testing headers
-        headers['x-mock-side'] = side;
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch('http://localhost:5000/api/vendors/parse-text', {
@@ -258,9 +319,6 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        headers['x-mock-side'] = side;
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch('http://localhost:5000/api/vendors', {
@@ -311,7 +369,6 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      else { headers['x-mock-side'] = side; headers['x-mock-wedding-id'] = 'mock-wedding-id'; }
 
       const res = await fetch(`http://localhost:5000/api/vendors/${editVendorModal._id}`, {
         method: 'PATCH',
@@ -330,7 +387,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
       });
       const data = await res.json();
       if (res.ok) {
-        onVendorCreated(data); // refresh parent list
+        if (onVendorUpdated) onVendorUpdated(data); // refresh parent list
         setEditMessage({ type: 'success', text: 'Vendor updated successfully!' });
         setTimeout(() => setEditVendorModal(null), 900);
       } else {
@@ -688,7 +745,18 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
               .filter(v => !categoryFilter || v.category.toLowerCase() === categoryFilter.toLowerCase())
               .filter(v => v.status === statusCol);
             return (
-              <div key={statusCol} className="bg-slate-100/60 rounded-xl p-4 min-h-[300px] border border-slate-200/50">
+              <div
+                key={statusCol}
+                onDragOver={handleDragOver}
+                onDragEnter={(e) => handleDragEnter(e, statusCol)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, statusCol)}
+                className={`rounded-xl p-4 min-h-[300px] border transition-all ${
+                  draggedOverCol === statusCol
+                    ? 'bg-indigo-50/50 border-indigo-300 ring-2 ring-indigo-500/20'
+                    : 'bg-slate-100/60 border-slate-200/50'
+                }`}
+              >
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{statusCol}</span>
                   <span className="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-bold">
@@ -699,7 +767,9 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                   {filteredVendors.map(vendor => (
                     <div
                       key={vendor._id}
-                      className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer relative group space-y-2"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, vendor)}
+                      className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer relative group space-y-2 active:opacity-50"
                     >
                       <div className="font-bold text-slate-800 text-sm truncate">{vendor.vendorName}</div>
                       <div className="flex justify-between items-center text-xs text-slate-500">
@@ -795,12 +865,22 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, vendors
                             </button>
                           )}
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditModal(vendor); }}
-                          className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-0.5 transition-colors"
-                        >
-                          ✏️ Edit
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditModal(vendor); }}
+                            className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-0.5 transition-colors"
+                          >
+                            ✏️ Edit
+                          </button>
+                          {vendor.status !== 'Booked' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteVendor(vendor); }}
+                              className="text-[9px] font-bold text-rose-600 hover:text-rose-800 uppercase tracking-wider flex items-center gap-0.5 transition-colors"
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

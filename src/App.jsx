@@ -97,7 +97,7 @@ export default function App() {
   }, []);
 
   const loadData = async () => {
-    if (!token || token === 'mock-token') return;
+    if (!token) return;
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
 
@@ -152,88 +152,8 @@ export default function App() {
         setNeededServices(nsData);
       }
     } catch (err) {
-      console.warn('API offline. Using offline mock sandbox mode.');
-      loadMockData();
+      console.warn('API offline or failed to load data.');
     }
-  };
-
-  const loadMockData = () => {
-    setUser({ name: 'Guest Wedding Planner', email: 'guest@wedstack.com', role: 'Planner' });
-    setWedding({ _id: 'mock-wedding-id', totalBudget: 45000, budgetSplitRatio: 55, weddingCode: 'WED-8914', weddingDate: new Date() });
-    setVendors([
-      {
-        _id: 'mock-v1',
-        vendorName: 'Elegance Photography',
-        category: 'Photography',
-        status: 'Shortlisted',
-        sideVisibility: 'Shared',
-        allowCrossView: true,
-        packages: [{
-          packageName: 'Classic Collection',
-          totalCost: 3500,
-          deliverables: ['8 Hours Coverage', 'Digital Album', '1 Lead Photographer'],
-          finePrint: [{ item: 'Extra Coverage Hour', costPerUnit: 200, unit: 'hour' }]
-        }]
-      },
-      {
-        _id: 'mock-v2',
-        vendorName: 'Blossom Bridal Makeup',
-        category: 'Makeup',
-        status: 'Booked',
-        sideVisibility: 'Bride',
-        allowCrossView: false,
-        packages: [{
-          packageName: 'Bridal Glow Pack',
-          totalCost: 1200,
-          deliverables: ['Airbrush Makeup', 'Hairstyling', 'Saree Draping'],
-          finePrint: [{ item: 'Extra Bridesmaid Makeup', costPerUnit: 150, unit: 'guest' }]
-        }]
-      },
-      {
-        _id: 'mock-v3',
-        vendorName: 'Sartorial Groom Suits',
-        category: 'Events',
-        status: 'Quoted',
-        sideVisibility: 'Groom',
-        allowCrossView: false,
-        packages: [{
-          packageName: 'Tuxedo Ensemble',
-          totalCost: 800,
-          deliverables: ['Bespoke Velvet Tuxedo', 'Shirt & Bowtie'],
-          finePrint: [{ item: 'Late Alteration Fee', costPerUnit: 100, unit: 'request' }]
-        }]
-      }
-    ]);
-    setTimelineEvents([
-      { _id: 'mock-e1', startTime: '08:00 AM', durationMinutes: 120, activityTitle: 'Bridal Makeup Session', assignedSide: 'Bride', coordinatorId: 'Jane (+1-555-9011)' },
-      { _id: 'mock-e2', startTime: '10:00 AM', durationMinutes: 60, activityTitle: 'Groom Preparation', assignedSide: 'Groom', coordinatorId: 'Mark (+1-555-2244)' },
-      { _id: 'mock-e3', startTime: '11:30 AM', durationMinutes: 90, activityTitle: 'First Look & Portraits', assignedSide: 'Shared', coordinatorId: 'Sarah (+1-555-4499)' }
-    ]);
-    setNotes([
-      { _id: 'mock-n1', content: 'Book extra room for relatives arriving early', side: 'Bride', completed: false },
-      { _id: 'mock-n2', content: 'Finalize suit fabrics and matching ties', side: 'Groom', completed: false },
-      { _id: 'mock-n3', content: 'Double check catering plate count by Friday', side: 'Shared', completed: true }
-    ]);
-    setExpenses([
-      { _id: 'mock-exp1', title: 'Catering deposit payment', amount: 3500, category: 'Catering', paidBy: 'Shared', isPaid: true, paidDate: new Date() },
-      { _id: 'mock-exp2', title: 'Photographer retainer', amount: 1500, category: 'Photography', paidBy: 'Bride', isPaid: true, paidDate: new Date() },
-      { _id: 'mock-exp3', title: 'Velvet Suit alterations deposit', amount: 400, category: 'Attire', paidBy: 'Groom', isPaid: false }
-    ]);
-    setProgramDetails([
-      { _id: 'mock-pd1', category: 'Music', key: 'Grand Entry Song', value: 'ABCD', side: 'Shared' },
-      { _id: 'mock-pd2', category: 'Music', key: 'Bride Entry Song', value: 'A Thousand Years', side: 'Bride' },
-      { _id: 'mock-pd3', category: 'Cake & Dessert', key: 'Wedding Cake Flavour', value: 'Chocolate Fudge Berry', side: 'Shared' }
-    ]);
-    setNeededServices([
-      { _id: 'm-s1', name: 'Venue / Auditorium Booking', category: 'Venue', icon: '🏢', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s2', name: 'Makeup & Grooming (Groom)', category: 'Makeup', icon: '🤵', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s3', name: 'Makeup & Bridal Styling (Bride)', category: 'Makeup', icon: '💄', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s4', name: 'Photo & Video Services', category: 'Photography', icon: '📸', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s5', name: 'Event Planner / Decor Decorators', category: 'Decor', icon: '🎪', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s6', name: 'Entertainment & Music / DJ', category: 'Music', icon: '🎵', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s7', name: 'Food Catering Services', category: 'Catering', icon: '🍽️', brideCompleted: false, groomCompleted: false },
-      { _id: 'm-s8', name: 'Vehicle & Transport Logistics', category: 'Others', icon: '🚗', brideCompleted: false, groomCompleted: false }
-    ]);
   };
 
   useEffect(() => {
@@ -266,7 +186,7 @@ export default function App() {
 
         setNeededServices(prev => prev.map(s => s._id === matchingService._id ? { ...s, ...servicePayload } : s));
 
-        if (token !== 'mock-token') {
+        if (token) {
           try {
             await fetch(`http://localhost:5000/api/needed-services/${matchingService._id}`, {
               method: 'PATCH',
@@ -300,7 +220,7 @@ export default function App() {
         const fallbackExp = { _id: Date.now().toString(), ...expensePayload };
         setExpenses(prev => [...prev, fallbackExp]);
 
-        if (token !== 'mock-token') {
+        if (token) {
           try {
             const expRes = await fetch('http://localhost:5000/api/expenses', {
               method: 'POST',
@@ -316,19 +236,20 @@ export default function App() {
       }
     }
 
-    if (token === 'mock-token') return;
-    try {
-      const res = await fetch(`http://localhost:5000/api/vendors/${vendorId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (!res.ok) setVendors(original);
-    } catch (err) {
-      setVendors(original);
+    if (token) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/vendors/${vendorId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (!res.ok) setVendors(original);
+      } catch (err) {
+        setVendors(original);
+      }
     }
   };
 
@@ -357,7 +278,6 @@ export default function App() {
     const fallback = { _id: Date.now().toString(), ...payload };
     setExpenses(prev => [...prev, fallback]);
 
-    if (token === 'mock-token') return;
     try {
       const res = await fetch('http://localhost:5000/api/expenses', {
         method: 'POST',
@@ -378,7 +298,6 @@ export default function App() {
     const original = [...neededServices];
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, ...updatePayload } : s));
 
-    if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
         method: 'PATCH',
@@ -395,7 +314,6 @@ export default function App() {
     const fallback = { _id: Date.now().toString(), name, category, icon: icon || '🏢', brideCompleted: false, groomCompleted: false };
     setNeededServices([...neededServices, fallback]);
 
-    if (token === 'mock-token') return;
     try {
       const res = await fetch('http://localhost:5000/api/needed-services', {
         method: 'POST',
@@ -413,7 +331,6 @@ export default function App() {
     const original = [...neededServices];
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, name, category, icon } : s));
 
-    if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
         method: 'PATCH',
@@ -430,7 +347,6 @@ export default function App() {
     const original = [...neededServices];
     setNeededServices(neededServices.filter(s => s._id !== serviceId));
 
-    if (token === 'mock-token') return;
     try {
       const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
         method: 'DELETE',
@@ -473,16 +389,10 @@ export default function App() {
         setAuthError(data.message || 'Authentication failed');
       }
     } catch (err) {
-      setAuthError('Could not reach backend. Starting locally in mock mode.');
-      triggerMockSession();
+      setAuthError('Could not reach backend. Please check your connection.');
     }
   };
 
-  const triggerMockSession = () => {
-    localStorage.setItem('wedstack_token', 'mock-token');
-    setToken('mock-token');
-    loadMockData();
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('wedstack_token');
@@ -515,7 +425,6 @@ export default function App() {
     const fallback = { _id: Date.now().toString(), content: newNoteContent, side: noteSideSelect, completed: false };
     setNotes([...notes, fallback]);
     setNewNoteContent('');
-    if (token === 'mock-token') return;
     try {
       const res = await fetch('http://localhost:5000/api/notes', {
         method: 'POST',
@@ -531,7 +440,6 @@ export default function App() {
 
   const handleToggleNote = async (id, completed) => {
     setNotes(notes.map(n => n._id === id ? { ...n, completed } : n));
-    if (token === 'mock-token') return;
     try {
       await fetch(`http://localhost:5000/api/notes/${id}`, {
         method: 'PATCH',
@@ -543,7 +451,6 @@ export default function App() {
 
   const handleDeleteNote = async (id) => {
     setNotes(notes.filter(n => n._id !== id));
-    if (token === 'mock-token') return;
     try {
       await fetch(`http://localhost:5000/api/notes/${id}`, {
         method: 'DELETE',
@@ -563,7 +470,7 @@ export default function App() {
   if (publicPortalId) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <CoordinatorTerminal weddingId={publicPortalId} mockMode={true} />
+        <CoordinatorTerminal weddingId={publicPortalId} isPublicView={true} />
       </div>
     );
   }
@@ -662,9 +569,10 @@ export default function App() {
                   {regMode === 'create' ? (
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Wedding Date</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Main Wedding Event Date</label>
                         <input
                           type="date"
+                          required
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
                           value={regWeddingDate}
                           onChange={(e) => setRegWeddingDate(e.target.value)}
@@ -704,18 +612,6 @@ export default function App() {
             </button>
           </form>
 
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-100"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">or</span>
-            <div className="flex-grow border-t border-slate-100"></div>
-          </div>
-
-          <button
-            onClick={triggerMockSession}
-            className="w-full py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="w-4 h-4 text-amber-500" /> Use Quick-Start Mock Session
-          </button>
 
           <div className="text-center">
             <button
@@ -923,6 +819,8 @@ export default function App() {
                   categoryFilter={categoryFilter}
                   setCategoryFilter={setCategoryFilter}
                   onVendorCreated={(newVendor) => setVendors([...vendors, newVendor])}
+                  onVendorUpdated={(updatedVendor) => setVendors(prev => prev.map(v => v._id === updatedVendor._id ? updatedVendor : v))}
+                  onVendorDeleted={(deletedId) => setVendors(prev => prev.filter(v => v._id !== deletedId))}
                   onUpdateVendorStatus={handleUpdateVendorStatus}
                   onLogVendorExpense={handleLogVendorExpense}
                   onExpenseDeleted={handleExpenseDeleted}
@@ -981,8 +879,8 @@ export default function App() {
 
               {activeTab === 'terminal' && (
                 <CoordinatorTerminal
-                  weddingId={wedding._id || 'mock-wedding-id'}
-                  mockMode={false}
+                  weddingId={wedding?._id}
+                  isPublicView={false}
                 />
               )}
             </>

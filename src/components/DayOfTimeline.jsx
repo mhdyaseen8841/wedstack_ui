@@ -19,9 +19,6 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        headers['x-mock-side'] = 'Shared';
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch('http://localhost:5000/api/timeline/shift-time', {
@@ -54,9 +51,6 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        headers['x-mock-side'] = 'Shared';
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch('http://localhost:5000/api/timeline', {
@@ -93,9 +87,6 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
       const headers = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-      } else {
-        headers['x-mock-side'] = 'Shared';
-        headers['x-mock-wedding-id'] = 'mock-wedding-id';
       }
 
       const res = await fetch(`http://localhost:5000/api/timeline/${id}`, {

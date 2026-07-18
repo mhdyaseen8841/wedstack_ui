@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight, CheckSquare, ListTodo } from 'lucide-react';
 
-export default function WeddingHub({ 
-  wedding, 
-  vendors, 
-  neededServices = [], 
-  token, 
-  side, 
-  user, 
-  timelineEvents, 
-  onUpdateWedding, 
-  onUpdateTimeline, 
-  onToggleService, 
-  onAddService, 
-  onUpdateService, 
+export default function WeddingHub({
+  wedding,
+  vendors,
+  neededServices = [],
+  token,
+  side,
+  user,
+  timelineEvents,
+  onUpdateWedding,
+  onUpdateTimeline,
+  onToggleService,
+  onAddService,
+  onUpdateService,
   onDeleteService,
   onNavigateToTab
 }) {
@@ -23,18 +23,18 @@ export default function WeddingHub({
 
   // Real-time countdown state
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, months: 0, remainingDays: 0 });
-  const [isMonthMode, setIsMonthMode] = useState(false);
-  
+  const [isMonthMode, setIsMonthMode] = useState(true);
+
   // Dialog Popups state
   const [showAddProgramModal, setShowAddProgramModal] = useState(false);
   const [showMutualSharingModal, setShowMutualSharingModal] = useState(false);
-  
+
   // Service CRUD Manager state
   const [showServiceManager, setShowServiceManager] = useState(false);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServiceCategory, setNewServiceCategory] = useState('Venue');
   const [newServiceIcon, setNewServiceIcon] = useState('🏢');
-  
+
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
@@ -50,7 +50,7 @@ export default function WeddingHub({
   const [locationName, setLocationName] = useState('');
   const [coordinates, setCoordinates] = useState('');
   const [assignedSide, setAssignedSide] = useState(side === 'Shared' ? 'Shared' : side);
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -61,7 +61,7 @@ export default function WeddingHub({
   // Live countdown ticker
   useEffect(() => {
     if (!wedding?.weddingDate) return;
-    
+
     const calculateTime = () => {
       const target = new Date(wedding.weddingDate);
       const now = new Date();
@@ -115,7 +115,7 @@ export default function WeddingHub({
     const groups = {};
     timelineEvents.forEach(evt => {
       if (!evt.eventDay) return;
-      
+
       // Filter personal roadmap events based on active side workspace
       if (side !== 'Shared' && !isPlanner) {
         if (side === 'Groom' && evt.assignedSide === 'Bride') return;
@@ -160,7 +160,7 @@ export default function WeddingHub({
       setMessage({ type: 'error', text: 'Date and Event Name are required.' });
       return;
     }
-    
+
     setSubmitting(true);
     setMessage(null);
 
@@ -197,7 +197,7 @@ export default function WeddingHub({
             onUpdateWedding(updatedWed);
           }
         }
-        
+
         onUpdateTimeline(); // Reload timeline lists
         setEventName('');
         setCoordinator('');
@@ -225,7 +225,7 @@ export default function WeddingHub({
         headers
       });
       onUpdateTimeline();
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const isMainWeddingDay = (dateStr) => {
@@ -249,10 +249,10 @@ export default function WeddingHub({
 
   return (
     <div className="space-y-12 md:space-y-16 text-slate-800 antialiased">
-      
+
       {/* 1. WOW FACTOR COUNTDOWN WIDGET (COMPACT & SPARKLING) */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-900 p-5 text-white shadow-2xl shadow-indigo-950/40 border border-white/10 shrink-0">
-        
+
         {/* Shifting Glow Circles Decoration (Animated Halo) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-4/5 bg-indigo-500/10 rounded-full blur-3xl animate-pulse duration-[6000ms]"></div>
         <div className="absolute top-0 right-10 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl animate-pulse duration-[3000ms]"></div>
@@ -283,7 +283,7 @@ export default function WeddingHub({
               The Grand Union
             </h1>
             <p className="text-slate-350 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-none">
-              {wedding?.weddingDate 
+              {wedding?.weddingDate
                 ? `Main Ceremony Day: ${new Date(wedding.weddingDate).toLocaleDateString(undefined, { dateStyle: 'long' })}`
                 : 'Add a date below and select "Main Wedding Ceremony"!'
               }
@@ -313,8 +313,8 @@ export default function WeddingHub({
                 ))}
               </div>
 
-              <button 
-                onClick={() => setIsMonthMode(!isMonthMode)} 
+              <button
+                onClick={() => setIsMonthMode(!isMonthMode)}
                 className="text-[8px] sm:text-[9px] font-bold text-white/40 hover:text-white/80 transition-colors uppercase tracking-widest bg-white/5 px-3 py-1 rounded-lg border border-white/5 hover:border-white/10"
               >
                 {isMonthMode ? "Show Total Days Mode" : "Show Months & Days Mode"}
@@ -332,8 +332,8 @@ export default function WeddingHub({
       {showAddProgramModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setShowAddProgramModal(false)} 
+            <button
+              onClick={() => setShowAddProgramModal(false)}
               className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
             >
               ✕
@@ -344,9 +344,8 @@ export default function WeddingHub({
             </div>
 
             {message && (
-              <div className={`p-3 rounded-xl text-xs font-bold mb-4 ${
-                message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-              }`}>
+              <div className={`p-3 rounded-xl text-xs font-bold mb-4 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                }`}>
                 {message.text}
               </div>
             )}
@@ -487,8 +486,8 @@ export default function WeddingHub({
       {showMutualSharingModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-sm w-full relative animate-in fade-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setShowMutualSharingModal(false)} 
+            <button
+              onClick={() => setShowMutualSharingModal(false)}
               className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
             >
               ✕
@@ -505,7 +504,7 @@ export default function WeddingHub({
                 checked={isBride ? (wedding.brideAllowsMutual !== false) : (wedding.groomAllowsMutual !== false)}
                 onChange={async (e) => {
                   const checked = e.target.checked;
-                  const payload = isBride 
+                  const payload = isBride
                     ? { brideAllowsMutual: checked }
                     : { groomAllowsMutual: checked };
 
@@ -522,7 +521,7 @@ export default function WeddingHub({
                       const updated = await res.json();
                       onUpdateWedding(updated);
                     }
-                  } catch (err) {}
+                  } catch (err) { }
                 }}
               />
               <span>Allow Partner to access Mutual View</span>
@@ -533,7 +532,7 @@ export default function WeddingHub({
 
       {/* 2. Page Content Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        
+
         {/* Full width timeline list */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
@@ -567,11 +566,10 @@ export default function WeddingHub({
 
                 return (
                   <div key={day.date} className="relative space-y-2.5 pb-2">
-                    
+
                     {/* Circle timeline marker */}
-                    <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 bg-white ${
-                      isMain ? 'border-amber-500 ring-4 ring-amber-500/10' : 'border-indigo-600'
-                    }`}></div>
+                    <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 bg-white ${isMain ? 'border-amber-500 ring-4 ring-amber-500/10' : 'border-indigo-600'
+                      }`}></div>
 
                     {/* Day Date Header Card */}
                     <div className="flex items-center justify-between gap-3">
@@ -583,7 +581,7 @@ export default function WeddingHub({
                           {dateObj.toLocaleDateString(undefined, { weekday: 'long' })}
                         </span>
                       </div>
-                      
+
                       {isMain && (
                         <span className="flex items-center gap-1 text-[9px] bg-amber-50 border border-amber-200 text-amber-700 font-extrabold px-2.5 py-0.5 rounded-full shadow-xs">
                           <Star className="w-3 h-3 fill-amber-300 text-amber-500" /> Main Wedding Day
@@ -598,7 +596,7 @@ export default function WeddingHub({
                           <div>
                             <div className="flex justify-between items-start gap-2">
                               <span className="font-extrabold text-xs text-slate-700 leading-tight block">{prog.activityTitle}</span>
-                              <button 
+                              <button
                                 onClick={() => handleDeleteProgram(prog._id)}
                                 className="text-slate-400 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 p-0.5 shrink-0"
                                 title="Delete program"
@@ -607,17 +605,17 @@ export default function WeddingHub({
                               </button>
                             </div>
                             <span className="text-[10px] text-slate-400 font-semibold block mt-1">🕒 {prog.startTime} ({prog.durationMinutes} min)</span>
-                            
+
                             {prog.locationName && (
                               <span className="text-[9px] text-slate-500 font-extrabold block truncate mt-2">📍 {prog.locationName}</span>
                             )}
-                            
+
                             {prog.coordinates && (
                               <div className="mt-1">
-                                <iframe 
+                                <iframe
                                   title="Location Map"
-                                  src={`https://maps.google.com/maps?q=${encodeURIComponent(prog.coordinates)}&t=&z=14&ie=UTF8&iwloc=&output=embed`} 
-                                  className="w-full h-20 rounded-xl border border-slate-200/60 bg-white" 
+                                  src={`https://maps.google.com/maps?q=${encodeURIComponent(prog.coordinates)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                                  className="w-full h-20 rounded-xl border border-slate-200/60 bg-white"
                                   allowFullScreen
                                   loading="lazy"
                                 ></iframe>
@@ -654,11 +652,10 @@ export default function WeddingHub({
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowServiceManager(!showServiceManager)}
-                  className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all shadow-sm ${
-                    showServiceManager
+                  className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all shadow-sm ${showServiceManager
                       ? "bg-rose-600 hover:bg-rose-750 text-white"
                       : "bg-slate-50 border border-slate-250 text-indigo-650 hover:bg-slate-100"
-                  }`}
+                    }`}
                 >
                   {showServiceManager ? "✕ Close Editor" : "🔧 Edit Needed Services"}
                 </button>
@@ -683,12 +680,12 @@ export default function WeddingHub({
             {showServiceManager && (
               <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-150 space-y-4 shadow-inner">
                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-1">⚙️ Custom Services CRUD builder</h4>
-                
+
                 {/* Add service form */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-slate-150 shadow-xs">
                   <div className="md:col-span-2">
                     <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Service name</label>
-                    <input 
+                    <input
                       type="text"
                       className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 bg-white font-medium"
                       placeholder="e.g. Wedding Hall Auditorium"
@@ -717,7 +714,7 @@ export default function WeddingHub({
                   <div className="flex items-end gap-2">
                     <div className="w-14">
                       <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Emoji</label>
-                      <input 
+                      <input
                         type="text"
                         maxLength="2"
                         className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-center bg-white outline-none"
@@ -744,14 +741,14 @@ export default function WeddingHub({
                     <div key={service._id} className="flex justify-between items-center p-2.5 bg-white border border-slate-150 rounded-xl gap-3">
                       {editingServiceId === service._id ? (
                         <div className="flex items-center gap-2 flex-grow">
-                          <input 
+                          <input
                             type="text"
                             maxLength="2"
                             className="w-10 px-1 py-0.5 border border-slate-200 rounded text-center text-xs"
                             value={editIcon}
                             onChange={(e) => setEditIcon(e.target.value)}
                           />
-                          <input 
+                          <input
                             type="text"
                             className="px-2 py-0.5 border border-slate-200 rounded text-xs flex-grow"
                             value={editName}
@@ -827,26 +824,25 @@ export default function WeddingHub({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {neededServices.map(service => {
                 const autoBooked = vendors.some(v => v.category.toLowerCase() === service.category.toLowerCase() && v.status === 'Booked');
-                
+
                 const brideChecked = service.brideCompleted || false;
                 const groomChecked = service.groomCompleted || false;
-                
+
                 const isCompleted = autoBooked || (
                   side === 'Bride' ? brideChecked : side === 'Groom' ? groomChecked : (brideChecked && groomChecked)
                 );
 
                 return (
-                  <div 
-                    key={service._id} 
-                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
-                      isCompleted 
-                        ? 'bg-emerald-50/20 border-emerald-100 text-emerald-850' 
+                  <div
+                    key={service._id}
+                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${isCompleted
+                        ? 'bg-emerald-50/20 border-emerald-100 text-emerald-850'
                         : 'bg-slate-50/40 border-slate-200/60 text-slate-700 hover:border-indigo-200'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       {/* Clicking the service title redirects to the vendor page filtered by category */}
-                      <div 
+                      <div
                         onClick={() => {
                           if (onNavigateToTab) {
                             onNavigateToTab('inbox', service.category);

@@ -1,11 +1,60 @@
 import React, { useState } from 'react';
 import { Music, Award, Plus, Trash2, CheckCircle2, LayoutGrid, Heart, Sparkles } from 'lucide-react';
 
+const getMediaEmbed = (url) => {
+  if (!url) return null;
+  
+  // YouTube parser
+  const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/;
+  const ytMatch = url.match(ytRegex);
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}`
+    };
+  }
+
+  // Spotify parser
+  if (url.includes('spotify.com')) {
+    const cleanUrl = url.split('?')[0];
+    const embedUrl = cleanUrl.replace('spotify.com/', 'spotify.com/embed/');
+    return {
+      type: 'spotify',
+      embedUrl
+    };
+  }
+
+  // Instagram parser
+  if (url.includes('instagram.com')) {
+    const cleanUrl = url.split('?')[0];
+    const slashEnds = cleanUrl.endsWith('/') ? cleanUrl : cleanUrl + '/';
+    return {
+      type: 'instagram',
+      embedUrl: `${slashEnds}embed`
+    };
+  }
+
+  // General Image parser
+  if (url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
+    return {
+      type: 'image',
+      embedUrl: url
+    };
+  }
+
+  // General URL fallback
+  return {
+    type: 'link',
+    embedUrl: url
+  };
+};
+
 export default function ProgramPlanner({ details, token, onDetailAdded, onDetailDeleted }) {
   const [category, setCategory] = useState('Music');
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
   const [side, setSide] = useState('Shared');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [message, setMessage] = useState(null);
 
   const categories = ['Music', 'Decor & Theme', 'Moments & Toast', 'Cake & Dessert', 'Custom Details'];
@@ -34,21 +83,23 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
       const res = await fetch('http://localhost:5000/api/program-details', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ category, key, value, side })
+        body: JSON.stringify({ category, key, value, side, mediaUrl })
       });
       if (res.ok) {
         const data = await res.json();
         onDetailAdded(data);
         setKey('');
         setValue('');
+        setMediaUrl('');
         setMessage({ type: 'success', text: 'Program detail saved!' });
       }
     } catch (err) {
       // Offline fallback
-      const fallback = { _id: Date.now().toString(), category, key, value, side };
+      const fallback = { _id: Date.now().toString(), category, key, value, side, mediaUrl };
       onDetailAdded(fallback);
       setKey('');
       setValue('');
+      setMediaUrl('');
       setMessage({ type: 'success', text: 'Saved locally (Offline).' });
     }
   };
@@ -57,6 +108,7 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
     setCategory(tpl.category);
     setKey(tpl.key);
     setValue(tpl.val);
+    setMediaUrl('');
   };
 
   const handleDelete = async (id) => {
@@ -166,6 +218,17 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
               </select>
             </div>
 
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Attached Media / Reference URL (Optional)</label>
+              <input
+                type="url"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs"
+                placeholder="Spotify, YouTube, Instagram, or Image link"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+              />
+            </div>
+
             <button
               type="submit"
               className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-1"
@@ -211,6 +274,44 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
                           </span>
                         </div>
                         <p className="text-xs font-bold text-slate-800 whitespace-pre-wrap">{detail.value}</p>
+                        {detail.mediaUrl && (() => {
+                          const embed = getMediaEmbed(detail.mediaUrl);
+                          if (!embed) return null;
+
+                          if (embed.type === 'image') {
+                            return (
+                              <div className="mt-2 rounded-lg overflow-hidden max-w-full h-24 border border-slate-200 bg-slate-100 shadow-inner">
+                                <img src={embed.embedUrl} alt="Preview" className="w-full h-full object-cover" />
+                              </div>
+                            );
+                          }
+                          if (['youtube', 'spotify', 'instagram'].includes(embed.type)) {
+                            return (
+                              <div className="mt-2 rounded-lg overflow-hidden w-full border border-slate-200 bg-slate-50 shadow-inner">
+                                <iframe
+                                  src={embed.embedUrl}
+                                  width="100%"
+                                  height={embed.type === 'spotify' ? '80' : '150'}
+                                  frameBorder="0"
+                                  allowTransparency="true"
+                                  allow="encrypted-media; clipboard-write; picture-in-picture; web-share"
+                                  title="Media Preview"
+                                  className="rounded-lg"
+                                ></iframe>
+                              </div>
+                            );
+                          }
+                          return (
+                            <a
+                              href={detail.mediaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 text-[10px] font-extrabold text-indigo-650 hover:underline flex items-center gap-1"
+                            >
+                              🔗 View Reference Link
+                            </a>
+                          );
+                        })()}
                       </div>
 
                       <button

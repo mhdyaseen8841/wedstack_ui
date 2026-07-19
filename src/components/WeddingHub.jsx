@@ -300,7 +300,9 @@ export default function WeddingHub({
               {/* Groom */}
               <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 px-3 py-1 rounded-full text-xs font-bold text-sky-750 shrink-0">
                 <span>🤵</span>
-                <span className="truncate max-w-[120px]">{wedding?.groomName || 'Groom'}</span>
+                <span className="truncate max-w-[120px]">
+                  {(wedding?.groomId && typeof wedding.groomId === 'object' && wedding.groomId.name) || wedding?.groomName || 'Groom'}
+                </span>
                 <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ${isGroomJoined ? 'bg-sky-200/50 text-sky-800' : 'bg-slate-200 text-slate-500'}`}>
                   {isGroomJoined ? 'Joined' : 'Pending'}
                 </span>
@@ -312,7 +314,9 @@ export default function WeddingHub({
               {/* Bride */}
               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${isBrideJoined ? 'bg-rose-50 border border-rose-100 text-rose-755' : 'bg-slate-50 border border-slate-200 border-dashed text-slate-450'}`}>
                 <span>🌸</span>
-                <span className="truncate max-w-[120px]">{wedding?.brideName || 'Bride'}</span>
+                <span className="truncate max-w-[120px]">
+                  {(wedding?.brideId && typeof wedding.brideId === 'object' && wedding.brideId.name) || wedding?.brideName || 'Bride'}
+                </span>
                 <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ${isBrideJoined ? 'bg-rose-200/50 text-rose-800' : 'bg-slate-150 text-slate-550'}`}>
                   {isBrideJoined ? 'Joined' : 'Pending'}
                 </span>

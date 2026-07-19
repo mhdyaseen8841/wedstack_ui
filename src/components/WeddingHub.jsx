@@ -280,78 +280,75 @@ export default function WeddingHub({
     setTimeout(() => setCopiedInvite(false), 2000);
   };
 
+  const groomName = (wedding?.groomId && typeof wedding.groomId === 'object' && wedding.groomId.name) || wedding?.groomName || 'Groom';
+  const brideName = (wedding?.brideId && typeof wedding.brideId === 'object' && wedding.brideId.name) || wedding?.brideName || 'Bride';
+
   return (
     <div className="space-y-6 md:space-y-8 text-slate-800 antialiased">
 
-      {/* Couple Collaboration Status Banner */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl pointer-events-none"></div>
+      {/* Elegant & Romantic Couple Banner (Compact) */}
+      <div className="bg-gradient-to-r from-indigo-50/60 via-rose-50/30 to-sky-50/20 rounded-2xl border border-rose-100/40 shadow-xs p-3.5 md:py-3 md:px-5 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        {/* Subtle Decorative Glows */}
+        <div className="absolute -top-10 -left-10 w-24 h-24 bg-rose-250/10 rounded-full blur-2xl pointer-events-none"></div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left z-10 w-full min-w-0">
-          <div className="flex items-center justify-center w-10 h-10 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-650 shrink-0">
-            <Users className="w-5 h-5" />
+        <div className="flex items-center gap-3 w-full min-w-0">
+          <div className="hidden sm:flex items-center justify-center w-9 h-9 bg-white/95 border border-rose-100 rounded-full shadow-xs shrink-0">
+            <Heart className="w-4.5 h-4.5 text-rose-500 fill-rose-100 animate-pulse" />
           </div>
           
-          <div className="flex-1 space-y-1 min-w-0">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Wedding Workspace Collaboration</h3>
-            
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-1">
-              {/* Groom */}
-              <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 px-3 py-1 rounded-full text-xs font-bold text-sky-750 shrink-0">
-                <span>🤵</span>
-                <span className="truncate max-w-[120px]">
-                  {(wedding?.groomId && typeof wedding.groomId === 'object' && wedding.groomId.name) || wedding?.groomName || 'Groom'}
-                </span>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ${isGroomJoined ? 'bg-sky-200/50 text-sky-800' : 'bg-slate-200 text-slate-500'}`}>
-                  {isGroomJoined ? 'Joined' : 'Pending'}
-                </span>
-              </div>
-
-              {/* Heart Connector */}
-              <Heart className={`w-3.5 h-3.5 fill-current shrink-0 ${isGroomJoined && isBrideJoined ? 'text-rose-500 animate-pulse' : 'text-slate-300'}`} />
-
-              {/* Bride */}
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${isBrideJoined ? 'bg-rose-50 border border-rose-100 text-rose-755' : 'bg-slate-50 border border-slate-200 border-dashed text-slate-450'}`}>
-                <span>🌸</span>
-                <span className="truncate max-w-[120px]">
-                  {(wedding?.brideId && typeof wedding.brideId === 'object' && wedding.brideId.name) || wedding?.brideName || 'Bride'}
-                </span>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ${isBrideJoined ? 'bg-rose-200/50 text-rose-800' : 'bg-slate-150 text-slate-550'}`}>
-                  {isBrideJoined ? 'Joined' : 'Pending'}
-                </span>
-              </div>
-            </div>
+          <div className="space-y-0.5 min-w-0 flex-1 text-center sm:text-left">
+            {isGroomJoined && isBrideJoined ? (
+              <>
+                <h2 className="text-base md:text-lg font-extrabold tracking-tight text-slate-800 font-serif-wedding flex flex-wrap items-center justify-center sm:justify-start gap-1.5 leading-tight">
+                  <span>{groomName}</span>
+                  <span className="text-rose-500 fill-rose-500 animate-pulse text-sm mx-0.5">❤️</span>
+                  <span>{brideName}</span>
+                </h2>
+                <p className="text-[9.5px] text-slate-450 font-bold uppercase tracking-wider">
+                  ✨ Two hearts planning one beautiful beginning • Together in Sync
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-base md:text-lg font-extrabold tracking-tight text-slate-800 font-serif-wedding flex flex-wrap items-center justify-center sm:justify-start gap-1.5 leading-tight">
+                  {isGroomJoined ? (
+                    <>
+                      <span>{groomName}</span>
+                      <span className="text-slate-400 text-xs italic font-normal">& His Bride-to-be</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{brideName}</span>
+                      <span className="text-slate-400 text-xs italic font-normal">& Her Groom-to-be</span>
+                    </>
+                  )}
+                </h2>
+                <p className="text-[9px] text-rose-500 font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-1">
+                  <span>⏳ Waiting for partner to join the planning workspace...</span>
+                </p>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Action Button/Info */}
-        <div className="shrink-0 z-10 w-full md:w-auto">
-          {isGroomJoined && isBrideJoined ? (
-            <div className="bg-emerald-50 border border-emerald-150 rounded-2xl p-3 text-center md:text-left flex items-center justify-center gap-2">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Workspace Syncing Live ✓</span>
+        {/* Action / Collaboration code if not both joined */}
+        {!isGroomJoined || !isBrideJoined ? (
+          <div className="shrink-0 z-10 w-full md:w-auto bg-white/80 backdrop-blur-xs border border-rose-100/40 p-2 rounded-xl flex items-center gap-2.5 shadow-2xs">
+            <div className="text-[9px] font-bold text-slate-500 pl-1.5">
+              <span className="text-slate-400 uppercase tracking-widest text-[7.5px] font-black block">Invite Code</span>
+              <span className="font-mono font-black text-slate-800 select-all">{wedding?.weddingCode}</span>
             </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="text-[9.5px] font-bold text-slate-450 text-center md:text-right">
-                <span>Invite partner to collaborate! Code:</span>
-                <span className="font-mono font-extrabold text-slate-800 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded ml-1 select-all">{wedding?.weddingCode}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopyInvite}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                {copiedInvite ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedInvite ? 'Copied!' : 'Copy Code'}</span>
-              </button>
-            </div>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={handleCopyInvite}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 shadow-xs"
+            >
+              {copiedInvite ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span>{copiedInvite ? 'Copied!' : 'Copy Code'}</span>
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* 1. WOW FACTOR COUNTDOWN WIDGET (COMPACT & SPARKLING) */}

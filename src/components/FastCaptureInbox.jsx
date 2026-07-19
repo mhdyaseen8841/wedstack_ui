@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Save, FileText, CheckCircle2, ChevronRight, Plus, Trash2, Check, Lock, Landmark, Users } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function FastCaptureInbox({ token, side, onVendorCreated, onVendorUpdated, onVendorDeleted, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter, onLogVendorExpense, expenses = [], onExpenseDeleted }) {
   const selectOptions = neededServices.length > 0
@@ -160,7 +161,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
   const handleDeleteAssociatedExpense = async (expenseId) => {
     if (token) {
       try {
-        await fetch(`http://localhost:5000/api/expenses/${expenseId}`, {
+        await fetch(`${API_URL}/api/expenses/${expenseId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -196,7 +197,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
       }
 
       if (token) {
-        const res = await fetch(`http://localhost:5000/api/vendors/${vendor._id}`, {
+        const res = await fetch(`${API_URL}/api/vendors/${vendor._id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -226,7 +227,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/vendors/parse-text', {
+      const res = await fetch(`${API_URL}/api/vendors/parse-text`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ rawText })
@@ -330,7 +331,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/vendors', {
+      const res = await fetch(`${API_URL}/api/vendors`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -379,7 +380,7 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`http://localhost:5000/api/vendors/${editVendorModal._id}`, {
+      const res = await fetch(`${API_URL}/api/vendors/${editVendorModal._id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({

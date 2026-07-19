@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight, CheckSquare, ListTodo, Edit, Users, Copy } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function WeddingHub({
   wedding,
@@ -185,8 +186,8 @@ export default function WeddingHub({
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const url = editingProgram
-        ? `http://localhost:5000/api/timeline/${editingProgram._id}`
-        : 'http://localhost:5000/api/timeline';
+        ? `${API_URL}/api/timeline/${editingProgram._id}`
+        : `${API_URL}/api/timeline`;
 
       const method = editingProgram ? 'PATCH' : 'POST';
 
@@ -209,7 +210,7 @@ export default function WeddingHub({
       if (res.ok) {
         // 2. If marked as Main Day, update the main weddingDate
         if (isMainDay) {
-          const wedRes = await fetch('http://localhost:5000/api/wedding', {
+          const wedRes = await fetch(`${API_URL}/api/wedding`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ weddingDate: eventDate })
@@ -243,7 +244,7 @@ export default function WeddingHub({
     try {
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`http://localhost:5000/api/timeline/${id}`, {
+      await fetch(`${API_URL}/api/timeline/${id}`, {
         method: 'DELETE',
         headers
       });
@@ -623,7 +624,7 @@ export default function WeddingHub({
                     const headers = { 'Content-Type': 'application/json' };
                     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                    const res = await fetch('http://localhost:5000/api/wedding', {
+                    const res = await fetch(`${API_URL}/api/wedding`, {
                       method: 'PATCH',
                       headers,
                       body: JSON.stringify(payload)

@@ -8,6 +8,7 @@ import CoordinatorTerminal from './components/CoordinatorTerminal';
 import ExpenseManager from './components/ExpenseManager';
 import ProgramPlanner from './components/ProgramPlanner';
 import WeddingHub from './components/WeddingHub';
+import { API_URL } from './config';
 
 function LogoIcon({ className = "w-6 h-6" }) {
   return (
@@ -102,7 +103,7 @@ export default function App() {
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const userRes = await fetch('http://localhost:5000/api/auth/me', { headers });
+      const userRes = await fetch(`${API_URL}/api/auth/me`, { headers });
       if (userRes.ok) {
         const userData = await userRes.json();
         setUser(userData);
@@ -111,43 +112,43 @@ export default function App() {
         }
       }
 
-      const weddingRes = await fetch('http://localhost:5000/api/wedding', { headers });
+      const weddingRes = await fetch(`${API_URL}/api/wedding`, { headers });
       if (weddingRes.ok) {
         const weddingData = await weddingRes.json();
         setWedding(weddingData);
       }
 
-      const vendorsRes = await fetch('http://localhost:5000/api/vendors', { headers });
+      const vendorsRes = await fetch(`${API_URL}/api/vendors`, { headers });
       if (vendorsRes.ok) {
         const vendorsData = await vendorsRes.json();
         setVendors(vendorsData);
       }
 
-      const timelineRes = await fetch('http://localhost:5000/api/timeline', { headers });
+      const timelineRes = await fetch(`${API_URL}/api/timeline`, { headers });
       if (timelineRes.ok) {
         const timelineData = await timelineRes.json();
         setTimelineEvents(timelineData);
       }
 
-      const notesRes = await fetch('http://localhost:5000/api/notes', { headers });
+      const notesRes = await fetch(`${API_URL}/api/notes`, { headers });
       if (notesRes.ok) {
         const notesData = await notesRes.json();
         setNotes(notesData);
       }
 
-      const expensesRes = await fetch('http://localhost:5000/api/expenses', { headers });
+      const expensesRes = await fetch(`${API_URL}/api/expenses`, { headers });
       if (expensesRes.ok) {
         const expensesData = await expensesRes.json();
         setExpenses(expensesData);
       }
 
-      const pdRes = await fetch('http://localhost:5000/api/program-details', { headers });
+      const pdRes = await fetch(`${API_URL}/api/program-details`, { headers });
       if (pdRes.ok) {
         const pdData = await pdRes.json();
         setProgramDetails(pdData);
       }
 
-      const nsRes = await fetch('http://localhost:5000/api/needed-services', { headers });
+      const nsRes = await fetch(`${API_URL}/api/needed-services`, { headers });
       if (nsRes.ok) {
         const nsData = await nsRes.json();
         setNeededServices(nsData);
@@ -189,7 +190,7 @@ export default function App() {
 
         if (token) {
           try {
-            await fetch(`http://localhost:5000/api/needed-services/${matchingService._id}`, {
+            await fetch(`${API_URL}/api/needed-services/${matchingService._id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify(servicePayload)
@@ -223,7 +224,7 @@ export default function App() {
 
         if (token) {
           try {
-            const expRes = await fetch('http://localhost:5000/api/expenses', {
+            const expRes = await fetch(`${API_URL}/api/expenses`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify(expensePayload)
@@ -239,7 +240,7 @@ export default function App() {
 
     if (token) {
       try {
-        const res = await fetch(`http://localhost:5000/api/vendors/${vendorId}`, {
+        const res = await fetch(`${API_URL}/api/vendors/${vendorId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -280,7 +281,7 @@ export default function App() {
     setExpenses(prev => [...prev, fallback]);
 
     try {
-      const res = await fetch('http://localhost:5000/api/expenses', {
+      const res = await fetch(`${API_URL}/api/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -300,7 +301,7 @@ export default function App() {
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, ...updatePayload } : s));
 
     try {
-      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+      const res = await fetch(`${API_URL}/api/needed-services/${serviceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(updatePayload)
@@ -316,7 +317,7 @@ export default function App() {
     setNeededServices([...neededServices, fallback]);
 
     try {
-      const res = await fetch('http://localhost:5000/api/needed-services', {
+      const res = await fetch(`${API_URL}/api/needed-services`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name, category, icon })
@@ -333,7 +334,7 @@ export default function App() {
     setNeededServices(neededServices.map(s => s._id === serviceId ? { ...s, name, category, icon } : s));
 
     try {
-      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+      const res = await fetch(`${API_URL}/api/needed-services/${serviceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name, category, icon })
@@ -349,7 +350,7 @@ export default function App() {
     setNeededServices(neededServices.filter(s => s._id !== serviceId));
 
     try {
-      const res = await fetch(`http://localhost:5000/api/needed-services/${serviceId}`, {
+      const res = await fetch(`${API_URL}/api/needed-services/${serviceId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -376,7 +377,7 @@ export default function App() {
       : { email: authEmail, password: authPassword };
 
     try {
-      const res = await fetch(`http://localhost:5000/api/auth/${endpoint}`, {
+      const res = await fetch(`${API_URL}/api/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -427,7 +428,7 @@ export default function App() {
     setNotes([...notes, fallback]);
     setNewNoteContent('');
     try {
-      const res = await fetch('http://localhost:5000/api/notes', {
+      const res = await fetch(`${API_URL}/api/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ content: newNoteContent, side: noteSideSelect })
@@ -442,7 +443,7 @@ export default function App() {
   const handleToggleNote = async (id, completed) => {
     setNotes(notes.map(n => n._id === id ? { ...n, completed } : n));
     try {
-      await fetch(`http://localhost:5000/api/notes/${id}`, {
+      await fetch(`${API_URL}/api/notes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ completed })
@@ -453,7 +454,7 @@ export default function App() {
   const handleDeleteNote = async (id) => {
     setNotes(notes.filter(n => n._id !== id));
     try {
-      await fetch(`http://localhost:5000/api/notes/${id}`, {
+      await fetch(`${API_URL}/api/notes/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

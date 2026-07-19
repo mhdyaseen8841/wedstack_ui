@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Percent, Shield, Filter, Award, Save, Heart, User, Users, Lock } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function CollaborativeBudget({ wedding, vendors, expenses = [], token, side, user, onUpdateWedding }) {
   const [groomTargetInput, setGroomTargetInput] = useState(wedding.groomBudget || 0);
@@ -53,7 +54,7 @@ export default function CollaborativeBudget({ wedding, vendors, expenses = [], t
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/wedding', {
+      const res = await fetch(`${API_URL}/api/wedding`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({

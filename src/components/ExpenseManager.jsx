@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DollarSign, Landmark, Plus, Trash2, Check, AlertCircle, Eye, EyeOff, Users, ArrowRight, Lock, Save } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function ExpenseManager({ expenses, token, side, user, wedding, onUpdateWedding, onExpenseAdded, onExpenseUpdated, onExpenseDeleted, totalBudget, neededServices = [] }) {
   const categories = neededServices.length > 0 
@@ -191,7 +192,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('http://localhost:5000/api/wedding', {
+      const res = await fetch(`${API_URL}/api/wedding`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(payload)
@@ -227,7 +228,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('http://localhost:5000/api/expenses', {
+      const res = await fetch(`${API_URL}/api/expenses`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ 
@@ -296,7 +297,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`http://localhost:5000/api/expenses/${id}`, {
+      const res = await fetch(`${API_URL}/api/expenses/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ isPaid: !currentVal })
@@ -314,7 +315,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
     try {
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`http://localhost:5000/api/expenses/${id}`, {
+      await fetch(`${API_URL}/api/expenses/${id}`, {
         method: 'DELETE',
         headers
       });
@@ -375,7 +376,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
 
     if (token) {
       try {
-        const res = await fetch(`http://localhost:5000/api/expenses/${editingExpense._id}`, {
+        const res = await fetch(`${API_URL}/api/expenses/${editingExpense._id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, Phone, User, Calendar, Plus, ChevronRight, AlertCircle, ArrowRight, Trash2, ArrowUpDown } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function DayOfTimeline({ events, token, onTimelineUpdated, vendors }) {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -21,7 +22,7 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/timeline/shift-time', {
+      const res = await fetch(`${API_URL}/api/timeline/shift-time`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ eventId, shiftMinutes })
@@ -53,7 +54,7 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('http://localhost:5000/api/timeline', {
+      const res = await fetch(`${API_URL}/api/timeline`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -89,7 +90,7 @@ export default function DayOfTimeline({ events, token, onTimelineUpdated, vendor
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`http://localhost:5000/api/timeline/${id}`, {
+      const res = await fetch(`${API_URL}/api/timeline/${id}`, {
         method: 'DELETE',
         headers
       });

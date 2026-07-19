@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Phone, Clock, AlertTriangle, Landmark, Calendar, Sparkles, Share2 } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function CoordinatorTerminal({ weddingId, isPublicView }) {
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export default function CoordinatorTerminal({ weddingId, isPublicView }) {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/wedding/public-portal/${weddingId}`);
+        const res = await fetch(`${API_URL}/api/wedding/public-portal/${weddingId}`);
         const result = await res.json();
         if (res.ok) {
           setData(result);

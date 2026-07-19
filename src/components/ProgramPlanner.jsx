@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Music, Award, Plus, Trash2, CheckCircle2, LayoutGrid, Heart, Sparkles } from 'lucide-react';
+import { API_URL } from '../config';
 
 const getMediaEmbed = (url) => {
   if (!url) return null;
@@ -80,7 +81,7 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('http://localhost:5000/api/program-details', {
+      const res = await fetch(`${API_URL}/api/program-details`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ category, key, value, side, mediaUrl })
@@ -115,7 +116,7 @@ export default function ProgramPlanner({ details, token, onDetailAdded, onDetail
     try {
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`http://localhost:5000/api/program-details/${id}`, {
+      await fetch(`${API_URL}/api/program-details/${id}`, {
         method: 'DELETE',
         headers
       });

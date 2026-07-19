@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight, CheckSquare, ListTodo } from 'lucide-react';
+import { Clock, Calendar, Heart, Plus, Trash2, Shield, Star, Award, Sparkles, Check, ChevronRight, CheckSquare, ListTodo, Edit } from 'lucide-react';
 
 export default function WeddingHub({
   wedding,
@@ -53,6 +53,22 @@ export default function WeddingHub({
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+  const [editingProgram, setEditingProgram] = useState(null);
+
+  const openEditModal = (prog) => {
+    setEditingProgram(prog);
+    setEventDate(prog.eventDay ? new Date(prog.eventDay).toISOString().split('T')[0] : '');
+    setEventName(prog.activityTitle || '');
+    setIsMainDay(isMainWeddingDay(prog.eventDay ? new Date(prog.eventDay).toISOString().split('T')[0] : ''));
+    setStartTime(prog.startTime || '09:00 AM');
+    setDuration(String(prog.durationMinutes || '120'));
+    setCoordinator(prog.coordinatorId === 'Coordinators' || prog.coordinatorId === 'General Coordinator' ? '' : (prog.coordinatorId || ''));
+    setLocationName(prog.locationName || '');
+    setCoordinates(prog.coordinates || '');
+    setAssignedSide(prog.assignedSide || 'Shared');
+    setMessage(null);
+    setShowAddProgramModal(true);
+  };
 
   useEffect(() => {
     setAssignedSide(side === 'Shared' ? 'Shared' : side);
@@ -168,9 +184,15 @@ export default function WeddingHub({
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      // 1. Create sub-program as a timeline event
-      const res = await fetch('http://localhost:5000/api/timeline', {
-        method: 'POST',
+      const url = editingProgram
+        ? `http://localhost:5000/api/timeline/${editingProgram._id}`
+        : 'http://localhost:5000/api/timeline';
+
+      const method = editingProgram ? 'PATCH' : 'POST';
+
+      // 1. Create or update sub-program as a timeline event
+      const res = await fetch(url, {
+        method,
         headers,
         body: JSON.stringify({
           eventDay: eventDate,
@@ -204,10 +226,11 @@ export default function WeddingHub({
         setLocationName('');
         setCoordinates('');
         setIsMainDay(false);
-        setMessage({ type: 'success', text: 'Program event added successfully!' });
+        setEditingProgram(null);
+        setShowAddProgramModal(false);
       } else {
         const data = await res.json();
-        setMessage({ type: 'error', text: data.message || 'Failed to add event.' });
+        setMessage({ type: 'error', text: data.message || 'Failed to save event.' });
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Connection failed. Local simulation updated.' });
@@ -333,14 +356,26 @@ export default function WeddingHub({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <button
-              onClick={() => setShowAddProgramModal(false)}
+              onClick={() => {
+                setShowAddProgramModal(false);
+                setEditingProgram(null);
+                setEventName('');
+                setCoordinator('');
+                setLocationName('');
+                setCoordinates('');
+                setIsMainDay(false);
+              }}
               className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold transition-all"
             >
               ✕
             </button>
             <div className="mb-4">
-              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100">Add Day Program</h3>
-              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">Add sub-events or programs to specific dates. E.g., morning puja, evening reception.</p>
+              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest pb-2 border-b border-slate-100">
+                {editingProgram ? 'Edit Day Program' : 'Add Day Program'}
+              </h3>
+              <p className="text-[10px] text-slate-450 font-semibold mt-1.5">
+                {editingProgram ? 'Modify the sub-event or program details below.' : 'Add sub-events or programs to specific dates. E.g., morning puja, evening reception.'}
+              </p>
             </div>
 
             {message && (
@@ -434,11 +469,11 @@ export default function WeddingHub({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Coordinates (Optional)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Coordinates / Plus Code / Address (Optional)</label>
                 <input
                   type="text"
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/10 outline-none bg-slate-50/50"
-                  placeholder="e.g. 40.7128,-74.0060"
+                  placeholder="e.g. 40.7128,-74.0060 or 49Q3+H54, Aluva, Kerala"
                   value={coordinates}
                   onChange={(e) => setCoordinates(e.target.value)}
                 />
@@ -476,7 +511,7 @@ export default function WeddingHub({
                 disabled={submitting}
                 className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm mt-2"
               >
-                <Plus className="w-4 h-4" /> {submitting ? 'Adding...' : 'Save Program Day'}
+                {!editingProgram && <Plus className="w-4 h-4" />} {submitting ? 'Saving...' : editingProgram ? 'Save Changes' : 'Save Program Day'}
               </button>
             </form>
           </div>
@@ -543,7 +578,19 @@ export default function WeddingHub({
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowAddProgramModal(true)}
+                  onClick={() => {
+                    setEditingProgram(null);
+                    setEventDate('');
+                    setEventName('');
+                    setStartTime('09:00 AM');
+                    setDuration('120');
+                    setCoordinator('');
+                    setLocationName('');
+                    setCoordinates('');
+                    setAssignedSide(side === 'Shared' ? 'Shared' : side);
+                    setMessage(null);
+                    setShowAddProgramModal(true);
+                  }}
                   className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs uppercase tracking-wider"
                 >
                   + Add Day Program
@@ -596,13 +643,22 @@ export default function WeddingHub({
                           <div>
                             <div className="flex justify-between items-start gap-2">
                               <span className="font-extrabold text-xs text-slate-700 leading-tight block">{prog.activityTitle}</span>
-                              <button
-                                onClick={() => handleDeleteProgram(prog._id)}
-                                className="text-slate-400 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 p-0.5 shrink-0"
-                                title="Delete program"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <button
+                                  onClick={() => openEditModal(prog)}
+                                  className="text-slate-400 hover:text-indigo-650 transition-colors p-0.5"
+                                  title="Edit program"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProgram(prog._id)}
+                                  className="text-slate-400 hover:text-rose-600 transition-colors p-0.5"
+                                  title="Delete program"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                             <span className="text-[10px] text-slate-400 font-semibold block mt-1">🕒 {prog.startTime} ({prog.durationMinutes} min)</span>
 
@@ -823,7 +879,8 @@ export default function WeddingHub({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {neededServices.map(service => {
-                const autoBooked = vendors.some(v => v.category.toLowerCase() === service.category.toLowerCase() && v.status === 'Booked');
+                const bookedVendors = vendors.filter(v => v.category.toLowerCase() === service.category.toLowerCase() && v.status === 'Booked');
+                const autoBooked = bookedVendors.length > 0;
 
                 const brideChecked = service.brideCompleted || false;
                 const groomChecked = service.groomCompleted || false;
@@ -859,6 +916,11 @@ export default function WeddingHub({
                           <span className="text-[9px] text-slate-400 font-semibold block uppercase">
                             Category: {service.category} ↗
                           </span>
+                          {autoBooked && (
+                            <span className="text-[9px] text-emerald-700 font-extrabold block mt-0.5">
+                              Vendor: {bookedVendors.map(v => v.vendorName).join(', ')}
+                            </span>
+                          )}
                         </div>
                       </div>
 

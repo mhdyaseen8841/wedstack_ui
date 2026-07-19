@@ -26,6 +26,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
   const [balanceRemarks, setBalanceRemarks] = useState('');
   const [selectedNeededServiceId, setSelectedNeededServiceId] = useState('');
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [chartView, setChartView] = useState('services'); // 'services' or 'status'
 
   const [editingExpense, setEditingExpense] = useState(null);
   
@@ -357,7 +358,19 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       balanceDueDate: editBalanceDueDate || undefined,
       balanceRemarks: editBalanceRemarks,
       neededServiceId: editNeededServiceId || undefined,
-      installments: editInstallments
+      installments: editInstallments.map(inst => {
+        // Strip out temporary _ids (e.g. timestamp strings) that fail Mongoose ObjectId casting
+        const cleaned = {
+          amount: inst.amount,
+          date: inst.date,
+          paymentMode: inst.paymentMode,
+          remarks: inst.remarks
+        };
+        if (inst._id && inst._id.length === 24) {
+          cleaned._id = inst._id;
+        }
+        return cleaned;
+      })
     };
 
     if (token) {
@@ -433,6 +446,8 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
 
   const grandTotalCost = serviceStats.reduce((sum, s) => sum + s.totalCost, 0);
   const grandTotalPaid = serviceStats.reduce((sum, s) => sum + s.totalPaid, 0);
+  const grandTotalBalance = grandTotalCost - grandTotalPaid;
+  const overallPaidPercent = grandTotalCost > 0 ? Math.round((grandTotalPaid / grandTotalCost) * 100) : 0;
   const editTotalPaid = editInstallments.reduce((sum, inst) => sum + inst.amount, 0);
 
   return (
@@ -480,66 +495,130 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
       {/* 2. Visual Service Analytics breakdown */}
       {serviceStats.length > 0 && (
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h4 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest mb-4">Service Budget & Payments Visualizer</h4>
+          <h4 className="font-extrabold text-xs text-slate-700 uppercase tracking-widest mb-6 border-b border-slate-150/40 pb-3">Service Budget & Payments Visualizer</h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 items-start">
             
-            {/* Donut Chart Display */}
-            <div className="flex flex-col items-center justify-center border-r border-slate-100/80 pr-6">
-              <div className="relative w-40 h-40 flex items-center justify-center">
-                <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                  <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f3f4f6" strokeWidth="3" />
-                  {(() => {
-                    let accumulatedPercent = 0;
-                    const colors = [
-                      '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
-                      '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
-                    ];
-                    return serviceStats.map((stat, idx) => {
-                      const percent = grandTotalCost > 0 ? (stat.totalCost / grandTotalCost) * 100 : 0;
-                      const strokeDasharray = `${percent} ${100 - percent}`;
-                      const strokeDashoffset = 100 - accumulatedPercent;
-                      accumulatedPercent += percent;
-                      const color = colors[idx % colors.length];
-                      
-                      return (
-                        <circle
-                          key={stat._id}
-                          cx="18"
-                          cy="18"
-                          r="15.915"
-                          fill="transparent"
-                          stroke={color}
-                          strokeWidth="3.2"
-                          strokeDasharray={strokeDasharray}
-                          strokeDashoffset={strokeDashoffset}
-                          className="transition-all duration-300 hover:stroke-[4]"
-                        />
-                      );
-                    });
-                  })()}
-                </svg>
+            {/* Dual Donut Charts & Legend */}
+            <div className="xl:col-span-2 flex flex-col justify-between border-r border-slate-100/80 pr-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
                 
-                <div className="absolute flex flex-col items-center text-center">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Paid Share</span>
-                  <span className="text-sm font-black text-slate-800">
-                    {grandTotalCost > 0 ? Math.round((grandTotalPaid / grandTotalCost) * 100) : 0}%
-                  </span>
-                  <span className="text-[9px] text-slate-450 font-bold uppercase mt-0.5">₹{grandTotalPaid.toLocaleString()}</span>
+                {/* Chart 1: Total Budget Share */}
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider mb-2.5">Total Budget Share</span>
+                  <div className="relative w-32 h-32 flex items-center justify-center">
+                    <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                      {/* Background ring */}
+                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f3f4f6" strokeWidth="3" />
+                      {(() => {
+                        let accumulatedPercent = 0;
+                        const colors = [
+                          '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
+                          '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
+                        ];
+                        return serviceStats.map((stat, idx) => {
+                          const percent = grandTotalCost > 0 ? (stat.totalCost / grandTotalCost) * 100 : 0;
+                          const strokeDasharray = `${percent} ${100 - percent}`;
+                          const strokeDashoffset = 100 - accumulatedPercent;
+                          accumulatedPercent += percent;
+                          const color = colors[idx % colors.length];
+                          
+                          return (
+                            <circle
+                              key={stat._id}
+                              cx="18"
+                              cy="18"
+                              r="15.915"
+                              fill="transparent"
+                              stroke={color}
+                              strokeWidth="3.2"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              className="transition-all duration-300 hover:stroke-[4]"
+                            />
+                          );
+                        });
+                      })()}
+                    </svg>
+                    
+                    <div className="absolute flex flex-col items-center text-center px-2">
+                      <span className="text-[7px] text-slate-400 font-bold uppercase">Total Cost</span>
+                      <span className="text-xs font-black text-slate-800">
+                        ₹{grandTotalCost.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Chart 2: Service Paid Share */}
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider mb-2.5">Service Paid Share</span>
+                  <div className="relative w-32 h-32 flex items-center justify-center">
+                    <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                      {/* Background ring */}
+                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f3f4f6" strokeWidth="3" />
+                      {grandTotalPaid > 0 ? (
+                        (() => {
+                          let accumulatedPercent = 0;
+                          const colors = [
+                            '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
+                            '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
+                          ];
+                          return serviceStats.map((stat, idx) => {
+                            const percent = grandTotalPaid > 0 ? (stat.totalPaid / grandTotalPaid) * 100 : 0;
+                            const strokeDasharray = `${percent} ${100 - percent}`;
+                            const strokeDashoffset = 100 - accumulatedPercent;
+                            accumulatedPercent += percent;
+                            const color = colors[idx % colors.length];
+                            
+                            return (
+                              <circle
+                                key={`paid-${stat._id}`}
+                                cx="18"
+                                cy="18"
+                                r="15.915"
+                                fill="transparent"
+                                stroke={color}
+                                strokeWidth="3.2"
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                className="transition-all duration-300 hover:stroke-[4]"
+                              />
+                            );
+                          });
+                        })()
+                      ) : null}
+                    </svg>
+                    
+                    <div className="absolute flex flex-col items-center text-center px-2">
+                      <span className="text-[7px] text-slate-400 font-bold uppercase">Total Paid</span>
+                      <span className="text-xs font-black text-emerald-600">
+                        ₹{grandTotalPaid.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {/* Unified Legend */}
+              <div className="flex flex-col gap-1.5 mt-2 w-full px-2 max-h-[140px] overflow-y-auto pr-1">
                 {serviceStats.map((stat, idx) => {
                   const colors = [
                     '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
                     '#f59e0b', '#8b5cf6', '#14b8a6', '#db2777'
                   ];
                   const color = colors[idx % colors.length];
+                  const payPercent = stat.totalCost > 0 ? Math.round((stat.totalPaid / stat.totalCost) * 100) : 0;
                   return (
-                    <div key={stat._id} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></span>
-                      <span>{stat.icon} {stat.name}</span>
+                    <div key={stat._id} className="flex justify-between items-center text-[9px] font-bold text-slate-600 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }}></span>
+                        <span className="truncate">{stat.icon} {stat.name.split(' (')[0].split(' / ')[0]}</span>
+                      </span>
+                      <span className="shrink-0 text-slate-500 font-extrabold">
+                        Total: ₹{stat.totalCost.toLocaleString()} (Paid: ₹{stat.totalPaid.toLocaleString()} - {payPercent}%)
+                      </span>
                     </div>
                   );
                 })}
@@ -547,7 +626,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
             </div>
 
             {/* Service Breakdown details lists */}
-            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {serviceStats.map((stat, idx) => {
                 const colors = [
                   '#6366f1', '#10b981', '#0ea5e9', '#f43f5e', 
@@ -557,7 +636,7 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                 const payPercent = stat.totalCost > 0 ? Math.round((stat.totalPaid / stat.totalCost) * 100) : 0;
                 
                 return (
-                  <div key={stat._id} className="p-3.5 border border-slate-100/80 rounded-2xl bg-slate-50/30 flex flex-col justify-between gap-1.5">
+                  <div key={stat._id} className="p-3.5 border border-slate-100/80 rounded-2xl bg-slate-50/30 flex flex-col justify-between gap-1.5 animate-in fade-in duration-200">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm">{stat.icon}</span>
@@ -566,9 +645,14 @@ export default function ExpenseManager({ expenses, token, side, user, wedding, o
                           <span className="text-[9px] text-slate-450 font-bold uppercase">{stat.expensesCount} records</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col">
                         <span className="font-black text-xs text-slate-800 block">₹{stat.totalCost.toLocaleString()}</span>
-                        <span className="text-[9px] text-slate-400 font-bold block">Paid: ₹{stat.totalPaid.toLocaleString()}</span>
+                        <span className="text-[9px] text-emerald-600 font-bold block">Paid: ₹{stat.totalPaid.toLocaleString()}</span>
+                        {stat.totalBalance > 0 ? (
+                          <span className="text-[9px] text-rose-600 font-black block">Bal: ₹{stat.totalBalance.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-[9px] text-emerald-700 font-black block">✓ Fully Paid</span>
+                        )}
                       </div>
                     </div>
 

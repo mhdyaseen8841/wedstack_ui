@@ -756,7 +756,10 @@ export default function App() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setCategoryFilter(null);
+                  }}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${isActive ? activeClass : 'text-slate-500 hover:text-slate-800'
                     }`}
                 >

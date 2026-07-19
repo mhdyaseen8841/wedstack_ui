@@ -2,14 +2,23 @@ import React, { useState } from 'react';
 import { Sparkles, Save, FileText, CheckCircle2, ChevronRight, Plus, Trash2, Check, Lock, Landmark, Users } from 'lucide-react';
 
 export default function FastCaptureInbox({ token, side, onVendorCreated, onVendorUpdated, onVendorDeleted, vendors, onUpdateVendorStatus, neededServices = [], categoryFilter, setCategoryFilter, onLogVendorExpense, expenses = [], onExpenseDeleted }) {
-  const categories = neededServices.length > 0
-    ? neededServices.map(s => s.name)
-    : ['Venue / Auditorium Booking', 'Makeup & Grooming (Groom)', 'Makeup & Bridal Styling (Bride)', 'Photo & Video Services', 'Event Planner / Decor Decorators', 'Entertainment & Music / DJ', 'Food Catering Services', 'Vehicle & Transport Logistics'];
+  const selectOptions = neededServices.length > 0
+    ? neededServices.map(s => ({ name: s.name, category: s.category }))
+    : [
+        { name: 'Venue / Auditorium Booking', category: 'Venue' },
+        { name: 'Makeup & Grooming (Groom)', category: 'Makeup' },
+        { name: 'Makeup & Bridal Styling (Bride)', category: 'Makeup' },
+        { name: 'Photo & Video Services', category: 'Photography' },
+        { name: 'Event Planner / Decor Decorators', category: 'Decor' },
+        { name: 'Entertainment & Music / DJ', category: 'Music' },
+        { name: 'Food Catering Services', category: 'Catering' },
+        { name: 'Vehicle & Transport Logistics', category: 'Others' }
+      ];
 
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [vendorName, setVendorName] = useState('');
-  const [category, setCategory] = useState(categories[0] || 'Venue / Auditorium Booking');
+  const [category, setCategory] = useState(selectOptions[0]?.category || 'Venue');
   const [packages, setPackages] = useState([]);
   const [status, setStatus] = useState('Quoted');
   const [sideVisibility, setSideVisibility] = useState(side === 'Shared' ? 'Shared' : side);
@@ -520,8 +529,8 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {selectOptions.map(opt => (
+                      <option key={opt.name} value={opt.category}>{opt.name}</option>
                     ))}
                   </select>
                 </div>
@@ -737,8 +746,34 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
 </div>
 
       {/* Visual Status Tracking Board (Kanban) */}
-      <div>
-        <h3 className="font-bold text-lg text-slate-800 mb-4">Vendor Status Tracking Board</h3>
+      <div className="space-y-4">
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <h3 className="font-bold text-lg text-slate-800">Vendor Status Tracking Board</h3>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter Category:</span>
+            <select
+              value={categoryFilter || ''}
+              onChange={(e) => {
+                if (setCategoryFilter) {
+                  setCategoryFilter(e.target.value || null);
+                }
+              }}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600 shadow-xs"
+            >
+              <option value="">All Categories</option>
+              {Array.from(new Set(selectOptions.map(o => o.category))).map(cat => {
+                const matchedService = selectOptions.find(o => o.category === cat);
+                return (
+                  <option key={cat} value={cat}>
+                    {matchedService ? matchedService.name.split(' (')[0].split(' / ')[0] : cat}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {boardStatuses.map(statusCol => {
             const filteredVendors = vendors
@@ -1221,7 +1256,9 @@ export default function FastCaptureInbox({ token, side, onVendorCreated, onVendo
                     value={editVendorModal.category}
                     onChange={e => setEditVendorModal({ ...editVendorModal, category: e.target.value })}
                   >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {selectOptions.map(opt => (
+                      <option key={opt.name} value={opt.category}>{opt.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

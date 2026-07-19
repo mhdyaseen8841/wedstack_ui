@@ -186,7 +186,7 @@ export default function VendorMatrix({ vendors }) {
                   Optimal Budget Choice
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed font-semibold">
-                  <span className="text-emerald-700 font-extrabold">{cheapestPackage.vendorName}</span>'s {cheapestPackage.packageName} package stands out at <span className="text-slate-900 font-bold">${cheapestPackage.cost}</span>.
+                  <span className="text-emerald-700 font-extrabold">{cheapestPackage.vendorName}</span>'s {cheapestPackage.packageName} package stands out at <span className="text-slate-900 font-bold">₹{cheapestPackage.cost}</span>.
                 </p>
               </div>
             )}
@@ -232,10 +232,10 @@ export default function VendorMatrix({ vendors }) {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="font-bold text-slate-800 text-sm">{pkg.packageName}</div>
-                            <div className="text-[10px] text-slate-400">Base: ${pkg.totalCost}</div>
+                            <div className="text-[10px] text-slate-400">Base: ₹{pkg.totalCost}</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-black text-indigo-600">${computedTotal}</div>
+                            <div className="text-sm font-black text-indigo-600">₹{computedTotal}</div>
                             <div className="text-[9px] text-slate-400">with simulation</div>
                           </div>
                         </div>
@@ -257,7 +257,7 @@ export default function VendorMatrix({ vendors }) {
                             {pkg.finePrint.map((fine, fIdx) => (
                               <div key={fIdx} className="flex justify-between">
                                 <span className="font-medium">• {fine.item}</span>
-                                <span className="font-bold text-slate-700">${fine.costPerUnit} / {fine.unit}</span>
+                                <span className="font-bold text-slate-700">₹{fine.costPerUnit} / {fine.unit}</span>
                               </div>
                             ))}
                           </div>
